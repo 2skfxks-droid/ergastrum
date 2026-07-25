@@ -441,6 +441,61 @@ const SIGIL_OPTIONS = [
     { type: 'mpCostDec', label: '기민한 흐름', desc: '스킬 사용 시 MP 소모량 15% 감소', val: 0.15 }
 ];
 
+const STATUS_EFFECTS = {
+    'burn': { name: '<span style="color:#e86868;">🔥화상</span>', desc: '매 턴 최대 체력의 4% 피해' },
+    'poison': { name: '<span style="color:#6be082;">🧪맹독</span>', desc: '매 턴 고정 피해' },
+    'bleed': { name: '<span style="color:#a83232;">🩸출혈</span>', desc: '매 턴 현재 체력의 6% 피해' },
+    'stun': { name: '<span style="color:#d4af37;">💫기절</span>', desc: '1턴 행동 불가' },
+    'freeze': { name: '<span style="color:#7abfe8;">❄️빙결</span>', desc: '1턴 행동 불가' },
+    'blind': { name: '<span style="color:#a8a8a8;">👁️실명</span>', desc: '공격 시 빗나갈 확률 대폭 증가' },
+    'silence': { name: '<span style="color:#bba98c;">🤐침묵</span>', desc: '스킬 및 궁극기 사용 불가' },
+    'sleep': { name: '<span style="color:#85c4e0;">💤수면</span>', desc: '행동 불가, 피격 시 치명타 획득 및 해제' },
+    'armor_break': { name: '<span style="color:#7a6e59;">🛡️부식</span>', desc: '방어력 50% 감소' },
+    'confusion': { name: '<span style="color:#c485e0;">🌀혼란</span>', desc: '행동 시 30% 확률로 자신을 공격' }
+};
+
+function hasStatus(entity, id) { return entity.statuses && entity.statuses.some(s => s.id === id); }
+function removeStatus(entity, id) {
+    if (!entity.statuses) return;
+    let idx = entity.statuses.findIndex(s => s.id === id);
+    if (idx !== -1) entity.statuses.splice(idx, 1);
+}
+function applyStatus(target, id, duration) {
+    if (!target.statuses) target.statuses = [];
+    let existing = target.statuses.find(s => s.id === id);
+    if (existing) existing.duration = Math.max(existing.duration, duration);
+    else target.statuses.push({ id, duration });
+}
+
+async function processStatuses(entity, isPlayer) {
+    if (!entity.statuses || entity.statuses.length === 0) return true;
+    
+    let canAct = true; let logMessages = [];
+    let entityName = isPlayer ? player.name : entity.name;
+
+    for (let i = entity.statuses.length - 1; i >= 0; i--) {
+        let s = entity.statuses[i]; let dmg = 0;
+
+        if (s.id === 'burn') { dmg = Math.max(1, Math.floor((isPlayer ? getMaxHp() : entity.maxHp) * 0.04)); logMessages.push(`🔥화상 피해(${dmg})`); } 
+        else if (s.id === 'poison') { dmg = isPlayer ? (player.level * 4 + 10) : (dungeonDepth * 15 + 20); logMessages.push(`🧪맹독 피해(${dmg})`); } 
+        else if (s.id === 'bleed') { dmg = Math.max(1, Math.floor(entity.hp * 0.06)); logMessages.push(`🩸출혈 피해(${dmg})`); } 
+        else if (s.id === 'stun') { logMessages.push(`💫기절 (행동 불가)`); canAct = false; } 
+        else if (s.id === 'freeze') { logMessages.push(`❄️빙결 (행동 불가)`); canAct = false; }
+        else if (s.id === 'sleep') { logMessages.push(`💤수면 중... (행동 불가)`); canAct = false; }
+
+        if (dmg > 0) entity.hp = Math.max(1, entity.hp - dmg);
+
+        s.duration--;
+        if (s.duration <= 0) entity.statuses.splice(i, 1);
+    }
+
+    if (logMessages.length > 0) {
+        await appendLogAsync(`[상태이상] ${entityName} - ${logMessages.join(', ')}`, 'combat', isPlayer ? 'enemy' : 'player');
+        updateUI();
+    }
+    return canAct;
+}
+
 const TALENT_DATA = {
     offense: {
         name: "학살의 길 (무력)", color: "var(--accent-red)",
@@ -478,7 +533,7 @@ let player = {
     equipment: { 머리: null, 상의: null, 바지: null, 신발: null, 장갑: null, 주무기: null, 보조무기: null, 목걸이: null, 반지1: null, 반지2: null },
     altarLevel: { atk: 0, def: 0, hp: 0, matk: 0, crit: 0, str: 0, dex: 0, int: 0, con: 0 },
     unlockedUltimate: false, ultimateCooldown: 0, enhanceFailStack: 0, accountPassword: "", highestRiftFloor: 1,
-    tp: 0, talents: { offense: 0, defense: 0, chaos: 0 }
+    tp: 0, talents: { offense: 0, defense: 0, chaos: 0 }, statuses: []
 };
 
 let gameState = "HUB", unlockedChapter = 1, currentChapterIdx = 0, questCleared = new Array(10).fill(false), dungeonDepth = 0, currentEnemy = null;
@@ -659,11 +714,17 @@ function closeModal() { if (currentTypewriter) { clearInterval(currentTypewriter
 function calculateCombatDamage(rawBaseDmg, isMagic, enemy, forceCrit = false, forceIgnoreRate = 0) {
     let dex = getFinalDex(), roll = Math.random() * 100;
     let glanceChance = Math.max(5, 20 - Math.floor(dex * 0.4)), critChance = 100 - Math.max(10, 15 + Math.floor(dex * 0.5));
+    
+    if (hasStatus(player, 'blind')) glanceChance = Math.min(100, glanceChance + 50);
+    if (hasStatus(enemy, 'sleep')) forceCrit = true;
+
     let tier = "normal", mult = 1.0;
     if (!forceCrit && roll < glanceChance) { tier = "glance"; mult = 0.8; } else if (forceCrit || roll >= critChance) { tier = "critical"; mult = 1.25; }
 
     let adjustedBase = rawBaseDmg * mult;
     let enemyDef = isMagic ? (enemy.mres || 0) * 0.4 : (enemy.def || 0) * 0.5;
+    
+    if (hasStatus(enemy, 'armor_break')) enemyDef *= 0.5;
     if (isRift && currentRiftDebuff === '칠흑의 장갑') enemyDef *= 1.4;
     
     let finalIgnoreRate = forceIgnoreRate + getSigilBonus('ignoreDef');
@@ -705,6 +766,7 @@ function applyLoadedData(saveData) {
     if(player.highestRiftFloor === undefined) player.highestRiftFloor = saveData.riftFloor || 1;
     if(player.tp === undefined) player.tp = 0;
     if(!player.talents) player.talents = { offense: 0, defense: 0, chaos: 0 };
+    if(!player.statuses) player.statuses = [];
     
     if (!player.tpUpdated) {
         let expectedTotalTp = Math.max(0, Math.floor((player.level - 3) / 2));
@@ -791,6 +853,14 @@ function updateUI() {
         }
     }
 
+    if (player.statuses && player.statuses.length > 0) {
+        let pStatusHtml = "";
+        player.statuses.forEach(s => {
+            pStatusHtml += `<span style="background:rgba(0,0,0,0.8); padding:2px 6px; border:1px solid var(--border-aged); border-radius:3px; font-size:11px; margin-right:5px; font-weight:bold; display:inline-block; margin-top:3px;">${STATUS_EFFECTS[s.id].name} <span style="color:#fff;">(${s.duration})</span></span>`;
+        });
+        passiveHtml += `<div style="margin-top:8px; padding-top:6px; border-top:1px dashed var(--border-aged);"><strong style="color:var(--accent-red);">상태이상:</strong><br>${pStatusHtml}</div>`;
+    }
+
     document.getElementById("ui-passives").innerHTML = passiveHtml;
 
     let accHtml = "";
@@ -848,6 +918,15 @@ function updateUI() {
         if (currentEnemy.def > 0) statLines.push(`<div class="stat-row" style="width:100%;"><span>방어력</span> <span>${currentEnemy.def}</span></div>`);
         let monsterIcon = currentEnemy.name.includes("균열") || currentEnemy.name.includes("심연") ? "ra-eye-monster" : "ra-monster-skull";
         let color = isRift ? "#ff77ff" : "var(--accent-red)";
+        
+        let eStatusHtml = "";
+        if (currentEnemy.statuses && currentEnemy.statuses.length > 0) {
+            currentEnemy.statuses.forEach(s => {
+                eStatusHtml += `<span style="background:rgba(0,0,0,0.8); padding:2px 6px; border:1px solid var(--border-aged); border-radius:3px; font-size:11px; margin-right:4px; font-weight:bold; display:inline-block; margin-top:3px;">${STATUS_EFFECTS[s.id].name} <span style="color:#fff;">(${s.duration})</span></span>`;
+            });
+            eStatusHtml = `<div style="margin-top:6px; font-size:11px; color:var(--text-muted);">상태이상: ${eStatusHtml}</div>`;
+        }
+
         enemyInfoEl.innerHTML = `
             <div style="text-align: center; margin-bottom: 12px; padding-top: 10px;">
                 <i class="ra ${monsterIcon}" style="font-size: 75px; color: ${color}; filter: drop-shadow(0 0 12px rgba(139, 38, 38, 0.6));"></i>
@@ -856,6 +935,7 @@ function updateUI() {
             <div class="stat-row" style="width:100%;"><span>체력 (HP)</span> <span>${currentEnemy.hp} / ${currentEnemy.maxHp}</span></div>
             <div class="bar-wrap" style="width:100%; margin-top:2px; margin-bottom:4px;"><div class="bar-fill hp-fill" style="width: ${enemyHpPct}%;"></div></div>
             ${statLines.join('')}
+            ${eStatusHtml}
         `;
     } else { enemyInfoEl.innerHTML = `<p style="font-size:12px; color:var(--text-muted); margin-top:30px; text-align:center;">현재 교전 중인 적이 없습니다.</p>`; }
 }
@@ -895,7 +975,7 @@ function openTalentModal() {
         let currentTier = player.talents[branch];
         
         html += `<div class="talent-col">
-                <div class="talent-col-title" style="color:${bData.color};">${bData.name}</div>`;
+                    <div class="talent-col-title" style="color:${bData.color};">${bData.name}</div>`;
         
         bData.nodes.forEach(node => {
             let statusClass = "locked";
@@ -919,7 +999,7 @@ function openTalentModal() {
                             <span style="font-size:11px; font-weight:normal;">${btnText}</span>
                         </button>
                         <span class="tooltiptext"><strong style="color:var(--accent-gold);">${node.name}</strong><br><br>${node.desc}</span>
-                   </div>`;
+                     </div>`;
         });
         html += `</div>`;
     });
@@ -1019,12 +1099,28 @@ function triggerRiftCombat(isBoss) {
     let atk = Math.floor(800 + (N * 120) * Math.pow(1.02, N));
     let def = 300 + (N * 20);
     
+    // 5배수 보스 층일 때는 부조리한 하드 CC기(기절, 빙결, 침묵, 수면, 혼란)를 제외하여 밸런스 유지
+    let modifiers = isBoss ? [
+        { prefix: "불타오르는", type: "burn" }, { prefix: "맹독의", type: "poison" }, 
+        { prefix: "피에 굶주린", type: "bleed" }, { prefix: "눈먼", type: "blind" }, 
+        { prefix: "부식성", type: "armor_break" }, { prefix: "심연의", type: "normal" }
+    ] : [
+        { prefix: "불타오르는", type: "burn" }, { prefix: "맹독의", type: "poison" }, { prefix: "피에 굶주린", type: "bleed" },
+        { prefix: "거대한", type: "stun" }, { prefix: "얼어붙은", type: "freeze" }, { prefix: "눈먼", type: "blind" },
+        { prefix: "침묵의", type: "silence" }, { prefix: "몽환의", type: "sleep" }, { prefix: "부식성", type: "armor_break" },
+        { prefix: "혼돈의", type: "confusion" }, { prefix: "야생의", type: "normal" }
+    ];
+    let mod = modifiers[Math.floor(Math.random() * modifiers.length)];
+    let prefixText = mod.type !== 'normal' ? `[${mod.prefix}] ` : "";
+
     if (isBoss) {
         hp = Math.floor(hp * 2.5); atk = Math.floor(atk * 1.5);
-        currentEnemy = { name: `[균열 군주] 심연의 지배자 (${N}층)`, hp, maxHp: hp, atk, def, matk: atk, mres: def, isBoss: true };
+        currentEnemy = { name: `${prefixText}[균열 군주] 심연의 지배자 (${N}층)`, hp, maxHp: hp, atk, def, matk: atk, mres: def, isBoss: true, mType: mod.type, statuses: [] };
     } else {
-        currentEnemy = { name: `[균열] 층계의 망령 (${N}층)`, hp, maxHp: hp, atk, def, matk: atk, mres: def, isBoss: false };
+        currentEnemy = { name: `${prefixText}[균열] 층계의 망령 (${N}층)`, hp, maxHp: hp, atk, def, matk: atk, mres: def, isBoss: false, mType: mod.type, statuses: [] };
     }
+    
+    player.statuses = []; 
     
     let debuffDesc = "";
     if (currentRiftDebuff === '마력 고갈') debuffDesc = "매 턴 MP 15 감소";
@@ -1078,6 +1174,24 @@ async function playerAttack() {
         box.appendChild(divider);
         scrollToBottom();
 
+        let canAct = await processStatuses(player, true);
+        if (!canAct) {
+            if (currentEnemy.hp > 0) await enemyTurnAsync();
+            return; 
+        }
+
+        if (hasStatus(player, 'confusion') && Math.random() < 0.30) {
+            let selfDmg = Math.floor(getPlayerAtk() * 0.5);
+            player.hp = Math.max(1, player.hp - selfDmg);
+            await appendLogAsync(`🌀 <span style="color:#c485e0; font-weight:bold;">[혼란]</span> 환각에 빠져 자신을 공격했습니다! <span class="combat-damage">${selfDmg}</span> 자해 피해!`, 'combat', 'player');
+            updateUI(); await enemyTurnAsync(); return;
+        }
+
+        if (hasStatus(currentEnemy, 'sleep')) {
+             removeStatus(currentEnemy, 'sleep');
+             await appendLogAsync(`💥 💤 치명적인 일격에 적이 수면에서 깨어납니다!`, 'reward', 'player');
+        }
+
         triggerEnemyPanelShake(); 
         await appendLogAsync(`🗡️ ${player.name}의 기본 공격!`, 'system', 'player');
         
@@ -1103,6 +1217,28 @@ async function playerAttack() {
 
 async function playerSkill() {
     if (isProcessingTurn || gameState !== 'COMBAT' || !currentEnemy) return;
+    
+    let canAct = await processStatuses(player, true);
+    if (!canAct) {
+        if (currentEnemy.hp > 0) await enemyTurnAsync();
+        return; 
+    }
+
+    if (hasStatus(player, 'silence')) {
+        logNarrative(`🤐 <span style="color:#bba98c;">[침묵]</span> 마력이 봉인되어 스킬을 구사할 수 없습니다!`, 'combat', 'system');
+        return;
+    }
+
+    if (hasStatus(player, 'confusion') && Math.random() < 0.30) {
+        isProcessingTurn = true; setCombatButtonsDisabled(true);
+        try {
+            let selfDmg = Math.floor(getPlayerAtk() * 0.5);
+            player.hp = Math.max(1, player.hp - selfDmg);
+            await appendLogAsync(`🌀 <span style="color:#c485e0; font-weight:bold;">[혼란]</span> 환각에 빠져 자신을 공격했습니다! <span class="combat-damage">${selfDmg}</span> 자해 피해!`, 'combat', 'player');
+            updateUI(); await enemyTurnAsync(); return;
+        } finally { setCombatButtonsDisabled(false); isProcessingTurn = false; }
+    }
+
     let skill = JOB_SKILLS[player.job] || JOB_SKILLS["방랑자"];
     let isFree = (player.job === '원소술사' && player.tier >= 2 && Math.random() < 0.20);
     let isChaosFree = (player.talents && player.talents.chaos >= 4 && Math.random() < 0.15); 
@@ -1122,6 +1258,11 @@ async function playerSkill() {
         divider.innerText = `[ 전투 턴 #${combatTurnCount} ]`;
         box.appendChild(divider);
         scrollToBottom();
+
+        if (hasStatus(currentEnemy, 'sleep')) {
+             removeStatus(currentEnemy, 'sleep');
+             await appendLogAsync(`💥 💤 치명적인 일격에 적이 수면에서 깨어납니다!`, 'reward', 'player');
+        }
 
         updateUI();
         if (isFree) {
@@ -1161,6 +1302,28 @@ async function playerSkill() {
 
 async function playerUltimate() {
     if (isProcessingTurn || gameState !== 'COMBAT' || !currentEnemy) return;
+    
+    let canAct = await processStatuses(player, true);
+    if (!canAct) {
+        if (currentEnemy.hp > 0) await enemyTurnAsync();
+        return; 
+    }
+
+    if (hasStatus(player, 'silence')) {
+        logNarrative(`🤐 <span style="color:#bba98c;">[침묵]</span> 마력이 봉인되어 궁극기를 구사할 수 없습니다!`, 'combat', 'system');
+        return;
+    }
+
+    if (hasStatus(player, 'confusion') && Math.random() < 0.30) {
+        isProcessingTurn = true; setCombatButtonsDisabled(true);
+        try {
+            let selfDmg = Math.floor(getPlayerAtk() * 0.8);
+            player.hp = Math.max(1, player.hp - selfDmg);
+            await appendLogAsync(`🌀 <span style="color:#c485e0; font-weight:bold;">[혼란]</span> 환각에 빠져 자신을 공격했습니다! <span class="combat-damage">${selfDmg}</span> 자해 피해!`, 'combat', 'player');
+            updateUI(); await enemyTurnAsync(); return;
+        } finally { setCombatButtonsDisabled(false); isProcessingTurn = false; }
+    }
+
     if (player.ultimateCooldown > 0) return;
     isProcessingTurn = true; setCombatButtonsDisabled(true); player.ultimateCooldown = 4;
     
@@ -1172,6 +1335,11 @@ async function playerUltimate() {
         divider.innerText = `[ 전투 턴 #${combatTurnCount} ]`;
         box.appendChild(divider);
         scrollToBottom();
+
+        if (hasStatus(currentEnemy, 'sleep')) {
+             removeStatus(currentEnemy, 'sleep');
+             await appendLogAsync(`💥 💤 치명적인 일격에 적이 수면에서 깨어납니다!`, 'reward', 'player');
+        }
 
         updateUI();
         let jobGroup = "";
@@ -1226,7 +1394,25 @@ async function tryFlee() {
 async function enemyTurnAsync() {
     if (!currentEnemy || currentEnemy.hp <= 0) return;
     if (player.ultimateCooldown && player.ultimateCooldown > 0) { player.ultimateCooldown--; renderCombatActions(); }
+    
+    let canAct = await processStatuses(currentEnemy, false);
+    if (!canAct) { await applyTurnEndRegen(); return; }
+
+    if (hasStatus(currentEnemy, 'confusion') && Math.random() < 0.30) {
+        let selfDmg = Math.floor(currentEnemy.atk * 0.5);
+        currentEnemy.hp = Math.max(0, currentEnemy.hp - selfDmg);
+        await appendLogAsync(`🌀 [혼란] 적이 환각에 빠져 자신을 공격해 <span class="combat-damage">${selfDmg}</span> 피해를 입었습니다!`, 'reward', 'enemy');
+        updateUI();
+        if (currentEnemy.hp <= 0) { await winCombat(); } else { await applyTurnEndRegen(); }
+        return;
+    }
+
     await appendLogAsync(`👹 ${currentEnemy.name}의 반격!`, 'combat', 'enemy');
+    
+    if (hasStatus(currentEnemy, 'blind') && Math.random() < 0.50) { 
+        await appendLogAsync(`💨 적이 실명 상태로 인해 헛스윙을 했습니다!`, 'reward', 'enemy'); 
+        await applyTurnEndRegen(); return; 
+    }
     
     if (Math.random() * 100 < getPlayerEvade()) { await appendLogAsync(`💨 날렵하게 적의 공격을 회피했습니다!`, 'reward', 'enemy'); await applyTurnEndRegen(); return; }
 
@@ -1234,7 +1420,16 @@ async function enemyTurnAsync() {
     let enemyAtk = currentEnemy.atk || 0, isTrueDamage = false;
     if (isRift && currentRiftDebuff === '혼돈의 일격' && Math.random() < 0.10) { isTrueDamage = true; }
     
-    let mitigated = isTrueDamage ? enemyAtk : Math.max(1, enemyAtk - Math.floor(getPlayerDef() * 1.2));
+    if (hasStatus(player, 'sleep')) {
+        enemyAtk = Math.floor(enemyAtk * 1.5);
+        removeStatus(player, 'sleep');
+        await appendLogAsync(`💥 💤 수면 중 무방비하게 치명타를 맞고 깨어납니다!`, 'combat', 'enemy');
+    }
+
+    let pDef = getPlayerDef();
+    if (hasStatus(player, 'armor_break')) pDef = Math.floor(pDef * 0.5);
+
+    let mitigated = isTrueDamage ? enemyAtk : Math.max(1, enemyAtk - Math.floor(pDef * 1.2));
     if (!isTrueDamage && ['전사','성기사','광전사'].includes(player.job) && player.tier >= 1) mitigated = Math.floor(mitigated * 0.9); 
     if (player.talents && player.talents.defense >= 4) mitigated = Math.floor(mitigated * 0.9); 
 
@@ -1243,6 +1438,14 @@ async function enemyTurnAsync() {
     player.hp = Math.max(0, player.hp - mitigated); updateUI();
     await appendLogAsync(`🩸 <span class="combat-damage">${mitigated}</span>의 피해를 입었습니다! (남은 HP: ${player.hp}/${getMaxHp()})`, 'combat', 'enemy');
     
+    if (mitigated > 0 && currentEnemy.mType && currentEnemy.mType !== 'normal') {
+        if (Math.random() < 0.30) {
+            let duration = ['stun', 'freeze', 'sleep'].includes(currentEnemy.mType) ? 1 : 3;
+            applyStatus(player, currentEnemy.mType, duration);
+            await appendLogAsync(`⚠️ <strong style="color:var(--accent-red);">[치명적 기믹]</strong> 적의 공격에 피격되어 ${STATUS_EFFECTS[currentEnemy.mType].name} 상태에 빠졌습니다!`, 'combat', 'enemy');
+        }
+    }
+
     if (player.hp > 0) { await applyTurnEndRegen(); } else { handleDeath(); }
 }
 
@@ -2124,15 +2327,29 @@ function triggerTrapNode() { let dmg = Math.floor(getMaxHp() * 0.12); player.hp 
 
 function triggerCombat(isElite) {
     gameState = "COMBAT"; combatTurnCount = 0; let ch = CHAPTERS[currentChapterIdx];
-    let name = isElite ? `[정예] 흉포한 ${ch.name} 수호수` : `${ch.name} 야생 마물`;
-    let hp = Math.floor(ch.lv * 60 * (isElite ? 1.8 : 1.0) + (dungeonDepth * 15)), atk = Math.floor(ch.lv * 10 * (isElite ? 1.4 : 1.0)), def = Math.floor(ch.lv * 3);
-    currentEnemy = { name, hp, maxHp: hp, atk, def, matk: atk, mres: def, isBoss: false };
+    
+    let modifiers = [
+        { prefix: "불타오르는", type: "burn" }, { prefix: "맹독의", type: "poison" }, { prefix: "피에 굶주린", type: "bleed" },
+        { prefix: "거대한", type: "stun" }, { prefix: "얼어붙은", type: "freeze" }, { prefix: "눈먼", type: "blind" },
+        { prefix: "침묵의", type: "silence" }, { prefix: "몽환의", type: "sleep" }, { prefix: "부식성", type: "armor_break" },
+        { prefix: "혼돈의", type: "confusion" }, { prefix: "야생의", type: "normal" }
+    ];
+    let mod = modifiers[Math.floor(Math.random() * modifiers.length)];
+    
+    let name = isElite ? `[정예] ${mod.prefix} ${ch.name} 수호수` : `${mod.prefix} ${ch.name} 마물`;
+    let hp = Math.floor(ch.lv * 60 * (isElite ? 1.8 : 1.0) + (dungeonDepth * 15));
+    let atk = Math.floor(ch.lv * 10 * (isElite ? 1.4 : 1.0)); let def = Math.floor(ch.lv * 3);
+    
+    currentEnemy = { name, hp, maxHp: hp, atk, def, matk: atk, mres: def, isBoss: false, mType: mod.type, statuses: [] };
+    player.statuses = []; 
+
     logNarrative(`적 조우: <span class="log-combat">${name}</span> (HP: ${hp})`, "combat", "system");
     renderCombatActions(); updateUI(); autoSave();
 }
 function triggerBossCombat() {
     gameState = "COMBAT"; combatTurnCount = 0; let ch = CHAPTERS[currentChapterIdx];
-    currentEnemy = { name: `[👑 보스] ${ch.boss}`, hp: ch.hp, maxHp: ch.hp, atk: ch.lv * 15 + 25, def: ch.lv * 5 + 5, matk: ch.lv * 15 + 20, mres: ch.lv * 5, isBoss: true };
+    currentEnemy = { name: `[👑 보스] ${ch.boss}`, hp: ch.hp, maxHp: ch.hp, atk: ch.lv * 15 + 25, def: ch.lv * 5 + 5, matk: ch.lv * 15 + 20, mres: ch.lv * 5, isBoss: true, mType: 'normal', statuses: [] };
+    player.statuses = [];
     logNarrative(`챕터 보스 <span class="log-combat">${currentEnemy.name}</span> 등장!`, "combat", "system");
     renderCombatActions(); updateUI(); autoSave();
 }
@@ -2141,7 +2358,7 @@ function checkLevelUp() {
     let leveledUp = false;
     while (player.exp >= player.maxExp) {
         player.exp -= player.maxExp; player.level++; player.statPoints += 5;
-        player.maxExp = Math.floor(player.maxExp * 1.20); leveledUp = true;
+        player.maxExp = Math.floor(player.maxExp * 1.35); leveledUp = true;
         
         if (player.level >= 5 && player.level % 2 === 1) { 
             let spentTp = (player.talents.offense || 0) + (player.talents.defense || 0) + (player.talents.chaos || 0);
