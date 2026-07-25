@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>《에르가스트룸: 왕국의 맹세》 - 정통 다크 판타지 로그라이크</title>
-    <!-- 404 파비콘 에러 방지 -->
     <link rel="icon" href="data:,">
-    <!-- 구글 폰트 임포트 -->
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
-    <!-- RPG Awesome 웹 폰트 아이콘 라이브러리 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/nagoshiashumari/Rpg-Awesome@1.0.1/css/rpg-awesome.min.css">
 
     <style>
@@ -404,7 +401,6 @@ const PASSIVE_SKILLS = {
     "의적": { name: "약탈의 손놀림", desc: "전투 승리 시 획득하는 골드가 25% 증가합니다." }
 };
 
-// [심연의 각인] 선택형 옵션 리스트
 const SIGIL_OPTIONS = [
     { type: 'vampire', label: '피의 갈증', desc: '공격 시 가한 피해량의 2% 흡혈', val: 2 },
     { type: 'critDmg', label: '약점 포착', desc: '치명타 피해량 +20% 증가', val: 20 },
@@ -577,12 +573,12 @@ let player = {
     relics: [], relicStorage: [], inventory: [], activeQuests: [], availableBulletinQuests: [],
     equipment: { 머리: null, 상의: null, 바지: null, 신발: null, 장갑: null, 주무기: null, 보조무기: null, 목걸이: null, 반지1: null, 반지2: null },
     altarLevel: { atk: 0, def: 0, hp: 0, matk: 0, crit: 0, str: 0, dex: 0, int: 0, con: 0 },
-    unlockedUltimate: false, ultimateCooldown: 0, enhanceFailStack: 0, accountPassword: ""
+    unlockedUltimate: false, ultimateCooldown: 0, enhanceFailStack: 0, accountPassword: "", highestRiftFloor: 1
 };
 
 let gameState = "HUB", unlockedChapter = 1, currentChapterIdx = 0, questCleared = new Array(10).fill(false), dungeonDepth = 0, currentEnemy = null;
 let selectedInvIdx = null, currentInvTab = 'all', pendingRelic = null;
-let currentTypewriter = null; // 수정: 전역 공간 변수
+let currentTypewriter = null; 
 let isRift = false, riftFloor = 1, currentRiftDebuff = null;
 let combatTextDelay = 150, isProcessingTurn = false;
 
@@ -632,6 +628,7 @@ function applyLoadedData(saveData) {
     if(player.unlockedUltimate === undefined) player.unlockedUltimate = false;
     if(player.ultimateCooldown === undefined) player.ultimateCooldown = 0;
     if(player.enhanceFailStack === undefined) player.enhanceFailStack = 0;
+    if(player.highestRiftFloor === undefined) player.highestRiftFloor = saveData.riftFloor || 1;
 
     const patchGear = (g) => {
         if (!g || g.type !== 'gear') return;
@@ -752,12 +749,13 @@ function updateUI() {
 
 function enterHub() {
     gameState = "HUB"; currentEnemy = null; isRift = false; currentRiftDebuff = null;
-    isProcessingTurn = false; // 안전장치: 귀환 시 무조건 턴 잠금 해제
-    setCombatButtonsDisabled(false); // 버튼 비활성화 해제
+    isProcessingTurn = false; 
+    setCombatButtonsDisabled(false); 
     let ch = CHAPTERS[currentChapterIdx];
     logNarrative(`안전한 거점 [${ch.hub}]에 도착했습니다. 정비를 서두르세요.`, "system", "system");
     
-    let riftBtn = questCleared[9] ? `<button class="btn-choice full-width" style="border-color:#ff77ff; background:linear-gradient(to bottom, #301030, #150515); justify-content:center; margin-top:8px; box-shadow: 0 0 8px rgba(255,119,255,0.4);" onclick="game.enterRift()"><i class="ra ra-eye-monster" style="color:#ff77ff;"></i> [엔드 콘텐츠] 심연의 균열 탑 등반 (현재 ${riftFloor}층)</button>` : "";
+    // 심연의 균열 탑 버튼 (오픈 시 파밍 및 등반 가능)
+    let riftBtn = questCleared[9] ? `<button class="btn-choice full-width" style="border-color:#ff77ff; background:linear-gradient(to bottom, #301030, #150515); justify-content:center; margin-top:8px; box-shadow: 0 0 8px rgba(255,119,255,0.4);" onclick="game.openRiftMenu()"><i class="ra ra-eye-monster" style="color:#ff77ff;"></i> [엔드 콘텐츠] 심연의 균열 탑 (파밍 및 등반)</button>` : "";
 
     document.getElementById("action-container").innerHTML = `
         <button class="btn-choice full-width" style="background:linear-gradient(to bottom, #3b1515, #1f0b0b); border-color:var(--accent-red); justify-content:center;" onclick="game.showChapterIntroModal(${currentChapterIdx})"><i class="ra ra-crossed-swords"></i> 제 ${currentChapterIdx+1}장 원정 진입 (${ch.name})</button>
@@ -772,11 +770,51 @@ function enterHub() {
 }
 
 // ==========================================
-// 균열 탑 로직
+// 균열 탑 로직 (파밍 가능하도록 층 선택 구현)
 // ==========================================
-function enterRift() {
+function openRiftMenu() {
+    if (!player.highestRiftFloor) player.highestRiftFloor = riftFloor;
+    if (riftFloor > player.highestRiftFloor) player.highestRiftFloor = riftFloor;
+
+    let html = `<h2>심연의 균열 탑 입장</h2>`;
+    html += `<p style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">도달했던 층수 내에서 원하는 층을 선택해 파밍할 수 있습니다.<br>(최대 도달 층: <strong style="color:var(--accent-gold);">${player.highestRiftFloor}층</strong>)</p>`;
+    
+    html += `<div style="display:flex; justify-content:center; align-items:center; gap:10px; margin-bottom: 15px; background:rgba(10,8,7,0.8); padding:15px; border:1px solid var(--border-aged); border-radius:4px;">
+        <button class="btn-mini" style="font-size:16px; padding:10px 15px; width:50px; text-align:center;" onclick="game.adjustRiftFloor(-5)">-5</button>
+        <button class="btn-mini" style="font-size:16px; padding:10px 15px; width:50px; text-align:center;" onclick="game.adjustRiftFloor(-1)">-1</button>
+        <div style="width:120px; text-align:center; font-size:24px; color:#ff77ff; font-weight:bold; text-shadow:0 0 8px rgba(255,119,255,0.4);" id="rift-floor-display">${riftFloor} 층</div>
+        <button class="btn-mini" style="font-size:16px; padding:10px 15px; width:50px; text-align:center;" onclick="game.adjustRiftFloor(1)">+1</button>
+        <button class="btn-mini" style="font-size:16px; padding:10px 15px; width:50px; text-align:center;" onclick="game.adjustRiftFloor(5)">+5</button>
+    </div>`;
+    
+    let isBoss = (riftFloor % 5 === 0);
+    html += `<div id="rift-boss-warning" style="text-align:center; height:20px; margin-bottom:15px; font-weight:bold; color:var(--accent-red);">${isBoss ? '⚠️ 심연의 군주(보스)가 기다리는 층입니다.' : ''}</div>`;
+
+    html += `<button class="btn-choice full-width stat-alert" style="justify-content:center; background:linear-gradient(to bottom, #3b103b, #1a051a); border-color:#ff77ff; padding:16px;" onclick="game.startRift()"><i class="ra ra-eye-monster" style="color:#ff77ff;"></i> ${riftFloor}층 진입하기</button>`;
+    html += `<button class="btn-choice full-width" style="justify-content:center; margin-top:10px;" onclick="game.closeModal()">취소 및 돌아가기</button>`;
+    showModal(html);
+}
+
+function adjustRiftFloor(amt) {
+    if (!player.highestRiftFloor) player.highestRiftFloor = riftFloor;
+    riftFloor += amt;
+    if (riftFloor < 1) riftFloor = 1;
+    if (riftFloor > player.highestRiftFloor) riftFloor = player.highestRiftFloor;
+    
+    document.getElementById('rift-floor-display').innerText = `${riftFloor} 층`;
+    let warningEl = document.getElementById('rift-boss-warning');
+    if (warningEl) {
+        warningEl.innerText = (riftFloor % 5 === 0) ? '⚠️ 심연의 군주(보스)가 기다리는 층입니다.' : '';
+    }
+    
+    let btn = document.querySelector('#modal-content .stat-alert');
+    if (btn) btn.innerHTML = `<i class="ra ra-eye-monster" style="color:#ff77ff;"></i> ${riftFloor}층 진입하기`;
+}
+
+function startRift() {
+    closeModal();
     isRift = true; gameState = "DUNGEON";
-    logNarrative(`🔮 <span style="color:#ff77ff; font-weight:bold;">[심연의 균열 탑]</span>에 진입했습니다. 공기가 짓누르듯 무겁고, 도망칠 길이 없습니다.`, "system", "system");
+    logNarrative(`🔮 <span style="color:#ff77ff; font-weight:bold;">[심연의 균열 탑 ${riftFloor}층]</span>에 진입했습니다. 공기가 짓누르듯 무겁습니다.`, "system", "system");
     promptNextRiftExploration(); updateUI(); autoSave();
 }
 
@@ -1055,7 +1093,14 @@ async function winCombat() {
             }
         }
         
+        // 최고 도달 층수 업데이트
+        if (!player.highestRiftFloor) player.highestRiftFloor = riftFloor;
+        if (riftFloor >= player.highestRiftFloor) {
+            player.highestRiftFloor = riftFloor + 1;
+        }
+
         riftFloor++; currentEnemy = null; gameState = "DUNGEON";
+        
         if (isBoss) {
             let container = document.getElementById("action-container");
             container.innerHTML = `
@@ -1230,7 +1275,6 @@ async function useItem(idx) {
 
 function useItemInventory(idx) { useItem(idx); selectedInvIdx = null; }
 
-// 신규 함수: 전투 중 인벤토리를 열어 소모품만 보여주는 처리
 function useItemInCombatModal() {
     if (isProcessingTurn) { logNarrative(`⚠️ 현재 행동 중입니다.`, "combat", "system"); return; }
     selectedInvIdx = null; currentInvTab = 'consumable'; renderInventoryModal();
@@ -1552,7 +1596,7 @@ function confirmEnhance(slot) {
 }
 function executeEnhance(slot) {
     let eq = player.equipment[slot]; if (!eq) return;
-    let reqStoneType = (slot === '주무기' || 파괴) ? 'weapon' : 'armor'; if (eq.grade === '균열') reqStoneType = 'transcendent';
+    let reqStoneType = (slot === '주무기' || slot === '보조무기') ? 'weapon' : 'armor'; if (eq.grade === '균열') reqStoneType = 'transcendent';
     let stoneIdx = player.inventory.findIndex(i => i.type === 'stone' && i.subType === reqStoneType); if (stoneIdx === -1) return; 
     
     let useProtect = false;
@@ -1680,7 +1724,7 @@ function exploreVillage() {
     else if (hub === "별빛 연금학회 요새") npcDialogs = [{ name: "광기어린 연금술사", text: "심연의 피! 완벽한 현자의 돌을 만들 수 있어!" }, { name: "기록 보관학자", text: "과거 마법 세력들의 오만함이 이 요새를 얼어붙게 만들었고, 금기된 실험이 괴물들을 탄생시켰지." }, { name: "요새 방위대장", text: "상점거리에 들러서 단단히 준비해두게." }];
     else npcDialogs = [{ name: "침묵의 감시자", text: "........" }, { name: "최후의 사제", text: "신들조차 눈을 감아버린 세상입니다." }, { name: "노련한 원정대원", text: "여기까지 오다니... 당신은 진짜 괴물이군." }];
     let npc = npcDialogs[Math.floor(Math.random() * npcDialogs.length)];
-    let html = `<h2>마 마을 주변 탐색</h2><div style="background:rgba(20,18,16,0.8); border:1px solid var(--border-aged); padding:20px; border-radius:4px; margin-bottom:15px; box-shadow:inset 0 0 15px rgba(0,0,0,0.8);"><div style="color:var(--accent-gold); font-weight:bold; margin-bottom:12px; font-size:16px;"><i class="ra ra-player"></i> ${npc.name}</div><div style="font-size:15px; color:var(--text-main); line-height:1.7; font-style:italic;">"${npc.text}"</div></div><button class="btn-choice full-width" style="justify-content:center; margin-top:15px;" onclick="game.closeModal()">탐색 종료</button>`;
+    let html = `<h2>마을 주변 탐색</h2><div style="background:rgba(20,18,16,0.8); border:1px solid var(--border-aged); padding:20px; border-radius:4px; margin-bottom:15px; box-shadow:inset 0 0 15px rgba(0,0,0,0.8);"><div style="color:var(--accent-gold); font-weight:bold; margin-bottom:12px; font-size:16px;"><i class="ra ra-player"></i> ${npc.name}</div><div style="font-size:15px; color:var(--text-main); line-height:1.7; font-style:italic;">"${npc.text}"</div></div><button class="btn-choice full-width" style="justify-content:center; margin-top:15px;" onclick="game.closeModal()">탐색 종료</button>`;
     showModal(html);
 }
 
@@ -1902,7 +1946,7 @@ window.game = {
     triggerBossCombat, playerAttack, playerSkill, playerUltimate, tryFlee,
     sellAllGear, sellItem, sellAllTrash, openEnhanceModal, confirmEnhance, executeEnhance,
     buyBaseGear, buyPotion, buyTalisman, buyStone,
-    enterRift, promptNextRiftExploration, triggerRiftCombat, escapeRift, openSigilRelicSelect, openSigilOptionSelect, applySigil
+    openRiftMenu, adjustRiftFloor, startRift, promptNextRiftExploration, triggerRiftCombat, escapeRift, openSigilRelicSelect, openSigilOptionSelect, applySigil
 };
 
 window.onload = function() { 
