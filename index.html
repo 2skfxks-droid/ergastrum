@@ -710,7 +710,7 @@ function applyLoadedData(saveData) {
     // =========================================================
     if (!player.statUpdatedToV2) {
         if (player.level > 1) {
-            let compensation = (player.level - 1) * 1; 
+            let compensation = (player.level - 1) * 2; 
             player.statPoints += compensation;
             
             setTimeout(() => {
