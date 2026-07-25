@@ -716,6 +716,19 @@ function updateUI() {
         document.getElementById("ui-boss-name").innerText = CHAPTERS[currentChapterIdx].boss;
     }
 
+    // 🌟 [수집 퀘스트 픽스] 인벤토리 개수 실시간 동기화
+    if (player.activeQuests && player.activeQuests.length > 0) {
+        player.activeQuests.forEach(q => {
+            if (q.type === 'gather') {
+                let gatherCount = 0;
+                player.inventory.forEach(item => {
+                    if (item.name === q.targetItem) gatherCount += (item.count || 1);
+                });
+                q.currentCount = gatherCount;
+            }
+        });
+    }
+
     const questTrackerEl = document.getElementById("ui-quest-tracker");
     if (player.activeQuests && player.activeQuests.length > 0) {
         let trackerHtml = "";
@@ -746,7 +759,6 @@ function updateUI() {
         `;
     } else { enemyInfoEl.innerHTML = `<p style="font-size:12px; color:var(--text-muted); margin-top:30px; text-align:center;">현재 교전 중인 적이 없습니다.</p>`; }
 }
-
 function enterHub() {
     gameState = "HUB"; currentEnemy = null; isRift = false; currentRiftDebuff = null;
     isProcessingTurn = false; 
@@ -1765,6 +1777,20 @@ function checkSubQuestProgress(actionType) {
 
 function openBulletinBoard() {
     if (player.availableBulletinQuests.length === 0 && player.activeQuests.length === 0) generateRandomBulletinQuests();
+    
+    // 🌟 [수집 퀘스트 픽스] 게시판을 열 때도 인벤토리 개수 재확인
+    if (player.activeQuests && player.activeQuests.length > 0) {
+        player.activeQuests.forEach(q => {
+            if (q.type === 'gather') {
+                let gatherCount = 0;
+                player.inventory.forEach(item => {
+                    if (item.name === q.targetItem) gatherCount += (item.count || 1);
+                });
+                q.currentCount = gatherCount;
+            }
+        });
+    }
+
     let html = `<h2>의뢰 게시판</h2><h3>수주 중인 의뢰 (${player.activeQuests.length}/3)</h3>`;
     if (player.activeQuests.length === 0) html += `<p style="font-size:12px; color:var(--text-muted);">수주 중인 의뢰가 없습니다.</p>`;
     player.activeQuests.forEach((q, idx) => {
