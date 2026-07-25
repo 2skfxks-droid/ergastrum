@@ -1400,19 +1400,33 @@ async function playerUltimate() {
         else if (['도적','암살자','의적'].includes(player.job)) jobGroup = "rogue";
 
         triggerEnemyPanelShake(); 
+        
         if (jobGroup === "warrior") {
+            // 전사 궁극기: 기존 대미지 유지(getPlayerAtk() * 3.5), 방어력 무시 100% (1.0) 적용[cite: 1]
             await appendLogAsync(`💥 <strong style="color:var(--accent-red); font-size:16px;">[궁극기: 태산명동참]</strong> 대지를 가르는 거대한 검기!`, 'system', 'player');
-            let res = calculateCombatDamage(getPlayerAtk() * 3.5, false, currentEnemy, false, 0.5); 
+            let res = calculateCombatDamage(getPlayerAtk() * 3.5, false, currentEnemy, false, 1.0); 
             currentEnemy.hp = Math.max(0, currentEnemy.hp - res.dmg);
-            await appendLogAsync(`🛡️ 적의 방어력을 관통하여 <span class="combat-damage">${res.dmg}</span> 피해! (남은 HP: ${currentEnemy.hp}/${currentEnemy.maxHp})`, 'reward', 'player');
+            await appendLogAsync(`🛡️ 적의 방어력을 완전히 무시하며 <span class="combat-damage">${res.dmg}</span> 피해! (남은 HP: ${currentEnemy.hp}/${currentEnemy.maxHp})`, 'reward', 'player');
         } 
         else if (jobGroup === "mage") {
-            await appendLogAsync(`💥 <strong style="color:var(--accent-blue); font-size:16px;">[궁극기: 초신성 폭발]</strong> 대기를 뒤흔드는 마법 폭발!`, 'system', 'player');
-            let res = calculateCombatDamage(getPlayerMatk() * 4.0, true, currentEnemy);
-            currentEnemy.hp = Math.max(0, currentEnemy.hp - res.dmg);
-            await appendLogAsync(`🔥 거대한 불길과 함께 <span class="combat-damage">${res.dmg}</span> 피해! (남은 HP: ${currentEnemy.hp}/${currentEnemy.maxHp})`, 'reward', 'player');
+            // 마법사 궁극기: 2회 다단히트 폭발 및 화상 상태이상 부여[cite: 1]
+            await appendLogAsync(`💥 <strong style="color:var(--accent-blue); font-size:16px;">[궁극기: 초신성 폭발]</strong> 대기를 뒤흔드는 연쇄 마법 폭발!`, 'system', 'player');
+            let base = getPlayerMatk() * 2.2; 
+            for(let i = 0; i < 2; i++) {
+                triggerEnemyPanelShake();
+                let res = calculateCombatDamage(base, true, currentEnemy);
+                currentEnemy.hp = Math.max(0, currentEnemy.hp - res.dmg);
+                await delay(120); 
+                await appendLogAsync(`🔥 ${i+1차 폭발}! 거대한 불길과 함께 <span class="combat-damage">${res.dmg}</span> 피해! (남은 HP: ${currentEnemy.hp}/${currentEnemy.maxHp})`, 'reward', 'player');
+                if (currentEnemy.hp <= 0) break;
+            }
+            if (currentEnemy.hp > 0) {
+                applyStatus(currentEnemy, 'burn', 3);
+                await appendLogAsync(`🔥 <strong style="color:#e86868;">[화상 부여]</strong> 폭발의 여파로 적에게 3턴간 화상을 입혔습니다!`, 'reward', 'player');
+            }
         }
         else if (jobGroup === "rogue") {
+            // 도적 궁극기 (기존 유지)[cite: 1]
             await appendLogAsync(`💥 <strong style="color:#c485e0; font-size:16px;">[궁극기: 환영 난무]</strong> 잔상을 남기며 3연속 급소 도륙!`, 'system', 'player');
             let base = getPlayerAtk() * 1.5 + getFinalDex() * 5.0; 
             for(let i=0; i<3; i++) {
@@ -1423,6 +1437,7 @@ async function playerUltimate() {
                 if (currentEnemy.hp <= 0) break;
             }
         }
+        
         updateUI();
         if (currentEnemy.hp <= 0) { await winCombat(); return; }
         await enemyTurnAsync();
