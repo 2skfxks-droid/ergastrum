@@ -124,16 +124,15 @@
         .grade-전설 { color: #ffdb4d; border-color: #e5b840; background: rgba(43, 36, 18, 0.6); text-shadow: 0 0 8px rgba(255,219,77,0.5); }
         .grade-균열 { color: #ff77ff; border-color: #aa22aa; background: rgba(60, 10, 60, 0.6); text-shadow: 0 0 8px rgba(255,119,255,0.6); }
 
-           /* 모바일 및 태블릿 최적화 */
+/* 모바일 및 태블릿 최적화 */
         @media screen and (max-width: 1024px) {
             body { 
                 align-items: flex-start; 
                 min-height: 100vh; 
                 padding: 0; 
-                overflow-y: auto; /* 바디 스크롤 활성화 */
+                overflow-y: auto; /* 전체 바디 스크롤 활성화 */
             }
 
-            /* 기존 Grid를 Flex로 변경하여 세로로 길게 쌓이도록 구성 */
             #game-wrapper { 
                 width: 100vw; 
                 height: auto; 
@@ -146,7 +145,7 @@
                 box-shadow: none;
             }
 
-            /* 상단 메뉴 고정 (스크롤해도 항상 보이도록) */
+            /* 상단 메뉴 고정 */
             header { 
                 position: sticky; 
                 top: 0; 
@@ -155,17 +154,16 @@
                 min-height: 55px; 
                 flex-shrink: 0;
             }
-            /* 모바일 화면 공간 확보를 위해 타이틀 텍스트 숨김 */
             .game-title { display: none; }
             .header-menu { gap: 6px; }
 
-            /* 숨겨져 있던 패널을 다시 보이게 하고 세로형에 맞게 변경 */
             .panel { 
                 display: flex; 
                 width: 100%; 
                 border: none; 
                 border-bottom: 2px solid #14110f; 
                 padding: 15px; 
+                height: auto;
                 max-height: none; 
                 overflow-y: visible;
                 flex-shrink: 0;
@@ -175,21 +173,27 @@
                 border-top: 2px solid #14110f; 
             }
 
-            /* 중앙 텍스트 및 액션 영역 */
+            /* 💡 문제 해결 핵심 파트: 중앙 영역 및 로그창 수정 */
             #center-display { 
                 width: 100%; 
-                flex: 1; /* 남은 공간을 차지하도록 */
-                min-height: 60vh; 
+                flex: none; /* 내용물만큼 자연스럽게 길이가 늘어나도록 변경 */
                 padding: 15px; 
                 gap: 12px; 
+                overflow-y: visible; /* PC버전의 hidden 속성을 덮어씌워 잘림 방지 */
             }
-            .narrative-box { min-height: 250px; font-size: 14px; }
+            .narrative-box { 
+                flex: none; /* 로그창이 버튼 공간을 밀어내지 못하게 해제 */
+                height: 250px; /* 모바일용 로그창 고정 높이 (내부 스크롤 유지) */
+                font-size: 14px; 
+            }
 
-            /* 액션 버튼 (화면이 작을 때를 대비해 기본 2열, 더 작아지면 1열) */
-            .action-container { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .action-container { 
+                grid-template-columns: 1fr 1fr; 
+                gap: 8px; 
+                min-height: auto; 
+            }
             .btn-choice { padding: 12px; font-size: 13px; }
 
-            /* 인벤토리 모달 최적화 (7열 -> 4열) */
             .modal-box { width: 95vw; padding: 15px; max-height: 85vh; }
             .modal-box h2 { font-size: 18px; }
             .inventory-grid { 
@@ -198,7 +202,6 @@
                 max-height: 40vh; 
             }
 
-            /* 시작/로그인 화면 최적화 */
             .intro-box { width: 95vw; padding: 25px 15px; }
             .intro-box h1 { font-size: 22px; margin-top: 20px; }
             .intro-input { width: 90%; font-size: 14px; padding: 12px; }
@@ -206,7 +209,7 @@
 
         /* 좁은 스마트폰 화면을 위한 추가 최적화 */
         @media screen and (max-width: 600px) {
-            .action-container { grid-template-columns: 1fr; } /* 버튼을 1열로 꽉 차게 */
+            .action-container { grid-template-columns: 1fr; } /* 모든 행동 버튼을 세로 1열로 큼직하게 배치 */
             header .btn-mini { font-size: 11px; padding: 6px 8px; }
             .inventory-grid { grid-template-columns: repeat(4, 1fr); }
         }
