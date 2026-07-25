@@ -122,7 +122,6 @@
         .grade-희귀 { color: #85c4e0; border-color: #3f7eab; background: rgba(18, 32, 43, 0.4); text-shadow: 0 0 5px rgba(133,196,224,0.3); }
         .grade-영웅 { color: #c485e0; border-color: #8c44ab; background: rgba(34, 18, 43, 0.4); text-shadow: 0 0 5px rgba(196,133,224,0.3); }
         .grade-전설 { color: #ffdb4d; border-color: #e5b840; background: rgba(43, 36, 18, 0.6); text-shadow: 0 0 8px rgba(255,219,77,0.5); }
-        /* 균열 등급 (엔드 콘텐츠 전용) */
         .grade-균열 { color: #ff77ff; border-color: #aa22aa; background: rgba(60, 10, 60, 0.6); text-shadow: 0 0 8px rgba(255,119,255,0.6); }
 
         @media screen and (max-width: 1024px) {
@@ -716,7 +715,6 @@ function updateUI() {
         document.getElementById("ui-boss-name").innerText = CHAPTERS[currentChapterIdx].boss;
     }
 
-    // 🌟 [수집 퀘스트 픽스] 인벤토리 개수 실시간 동기화
     if (player.activeQuests && player.activeQuests.length > 0) {
         player.activeQuests.forEach(q => {
             if (q.type === 'gather') {
@@ -766,7 +764,6 @@ function enterHub() {
     let ch = CHAPTERS[currentChapterIdx];
     logNarrative(`안전한 거점 [${ch.hub}]에 도착했습니다. 정비를 서두르세요.`, "system", "system");
     
-    // 심연의 균열 탑 버튼 (오픈 시 파밍 및 등반 가능)
     let riftBtn = questCleared[9] ? `<button class="btn-choice full-width" style="border-color:#ff77ff; background:linear-gradient(to bottom, #301030, #150515); justify-content:center; margin-top:8px; box-shadow: 0 0 8px rgba(255,119,255,0.4);" onclick="game.openRiftMenu()"><i class="ra ra-eye-monster" style="color:#ff77ff;"></i> [엔드 콘텐츠] 심연의 균열 탑 (파밍 및 등반)</button>` : "";
 
     document.getElementById("action-container").innerHTML = `
@@ -781,9 +778,6 @@ function enterHub() {
     updateUI(); autoSave();
 }
 
-// ==========================================
-// 균열 탑 로직 (파밍 가능하도록 층 선택 구현)
-// ==========================================
 function openRiftMenu() {
     if (!player.highestRiftFloor) player.highestRiftFloor = riftFloor;
     if (riftFloor > player.highestRiftFloor) player.highestRiftFloor = riftFloor;
@@ -882,9 +876,6 @@ function escapeRift() {
     enterHub();
 }
 
-// ==========================================
-// 일반 전투 / 탐색 / 턴 로직
-// ==========================================
 function renderCombatActions() {
     const container = document.getElementById("action-container");
     let currentSkill = JOB_SKILLS[player.job] || JOB_SKILLS["방랑자"];
@@ -1093,17 +1084,15 @@ async function winCombat() {
         let medalGain = isBoss ? 5 : 1; player.honor += medalGain;
         await appendLogAsync(`🏆 훈장 ${medalGain}개 획득!`, "reward", "system");
         
-        // 🌟 [추가된 부분] 균열 전용 골드 및 경험치 폭풍 획득 로직! 
-       let baseGold = 2000 + (riftFloor * 250);
-       let baseExp = 1800 + (riftFloor * 200);
+        let baseGold = 2000 + (riftFloor * 250);
+        let baseExp = 1800 + (riftFloor * 200);
 
-       let riftGold = Math.floor(baseGold * (isBoss ? 3.5 : 1) * (1 + getAccessoryEffect('goldBoost')/100));
-       let riftExp = Math.floor(baseExp * (isBoss ? 3.5 : 1));
-📊 새로 세팅된 층별 보상 체감
+        let riftGold = Math.floor(baseGold * (isBoss ? 3.5 : 1) * (1 + getAccessoryEffect('goldBoost')/100));
+        let riftExp = Math.floor(baseExp * (isBoss ? 3.5 : 1));
+        
         player.gold += riftGold; player.exp += riftExp;
         await appendLogAsync(`보상: 골드 +${riftGold}, 경험치 +${riftExp}`, "reward", "system");
-        checkLevelUp(); // 균열에서도 레벨업이 정상적으로 처리되도록 추가!
-        // 🌟 [추가된 부분 끝]
+        checkLevelUp(); 
 
         if (isBoss) {
             if (Math.random() < 0.15) {
@@ -1117,7 +1106,6 @@ async function winCombat() {
             }
         }
         
-        // 최고 도달 층수 업데이트
         if (!player.highestRiftFloor) player.highestRiftFloor = riftFloor;
         if (riftFloor >= player.highestRiftFloor) {
             player.highestRiftFloor = riftFloor + 1;
@@ -1136,7 +1124,6 @@ async function winCombat() {
         autoSave(); return;
     }
 
-    // --- (아래는 일반 원정 전투 보상 로직 그대로 유지) ---
     let isElite = currentEnemy.name.includes("정예");
     let goldGain = Math.floor(50 * (currentChapterIdx + 1) * (isBoss ? 5 : (isElite ? 3 : 1)) * (1 + getAccessoryEffect('goldBoost')/100));
     let expGain = Math.floor(45 * (currentChapterIdx + 1) * (isBoss ? 6 : (isElite ? 2.8 : 1)));
@@ -1209,7 +1196,7 @@ function generateEquipment(slot, grade, chIdx) {
     let gradeIdx = Math.max(0, EQUIPMENT_GRADES.indexOf(grade));
     let reqLevel = Math.max(1, (chIdx * 3) + (gradeIdx * 2)); 
     let statMultiplier = Math.floor(reqLevel * 1.5) + (gradeIdx * 4); 
-    if (gradeIdx === 5) statMultiplier = Math.floor(statMultiplier * 1.3); // 균열 등급
+    if (gradeIdx === 5) statMultiplier = Math.floor(statMultiplier * 1.3);
 
     let gear = { name: "", type: "gear", slot, grade, reqLevel: reqLevel, price: statMultiplier * 15, count: 1, options: [], isLocked: false };
 
@@ -1271,9 +1258,6 @@ function getItemIcon(item) {
     return `<i class="ra ${iconClass}" style="${colorStyle}"></i>`;
 }
 
-// ==========================================
-// 인벤토리 & 아이템 모달 로직
-// ==========================================
 async function useItem(idx) {
     if (isProcessingTurn) return;
     let item = player.inventory[idx]; if (!item) return;
@@ -1438,9 +1422,6 @@ function useReturnStoneQuick() {
 }
 function useReturnStoneExploration() { useReturnStoneQuick(); }
 
-// ==========================================
-// 거점 시스템 (마을, 상점, 제단, 게시판)
-// ==========================================
 function openStatModal() {
     let html = `<h2>기본 스탯 및 캐릭터 정보</h2><p>잔여 포인트: <strong style="color:var(--accent-gold);">${player.statPoints}</strong></p>`;
     const stats = [{ key: 'str', name: '힘 (STR)', val: player.str }, { key: 'dex', name: '민첩 (DEX)', val: player.dex }, { key: 'int', name: '지능 (INT)', val: player.int }, { key: 'con', name: '체력 (CON)', val: player.con }];
@@ -1484,7 +1465,6 @@ function openBlacksmith() {
     let gears = player.inventory.filter(i => i.type === 'gear');
     if (gears.length > 0) html += `<button class="btn-choice full-width" style="justify-content:center; margin-bottom:8px; background:linear-gradient(to bottom, #4a2424, #2a1414);" onclick="game.sellAllGear()">💰 안 입는 장비 일괄 판매 (잠금 제외)</button>`;
     
-    // 강화를 위한 대장간 전용 구매 탭 추가
     html += `<h3 style="margin-top:10px;">강화소 및 특수 아이템</h3>`;
     html += `<button class="btn-choice full-width" style="justify-content:center; margin-bottom:6px; background:linear-gradient(to bottom, #2c241b, #1a1510);" onclick="game.openEnhanceModal()"><i class="ra ra-anvil"></i> 장비 강화소 열기</button>`;
     html += `<button class="btn-choice full-width" style="justify-content:center; margin-bottom:15px; border-color:#e5b840;" onclick="game.buyStone('장비 파괴 보호권', 'protect', 50000)"><i class="ra ra-shield" style="color:#e5b840;"></i> 장비 파괴 보호권 구입 (50,000 G)</button>`;
@@ -1782,7 +1762,6 @@ function checkSubQuestProgress(actionType) {
 function openBulletinBoard() {
     if (player.availableBulletinQuests.length === 0 && player.activeQuests.length === 0) generateRandomBulletinQuests();
     
-    // 🌟 [수집 퀘스트 픽스] 게시판을 열 때도 인벤토리 개수 재확인
     if (player.activeQuests && player.activeQuests.length > 0) {
         player.activeQuests.forEach(q => {
             if (q.type === 'gather') {
@@ -1969,9 +1948,6 @@ function triggerRelicDrop() {
     else { openRelicChoiceModal(newRelic); }
 }
 
-// ==========================================
-// 전체 함수 window.game 매핑 
-// ==========================================
 window.game = {
     setLanguage, closeModal, loginOrRegister, manualServerSave, loadGame, startAdventure,
     openChatModal, sendChatMessage,
