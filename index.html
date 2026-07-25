@@ -1186,7 +1186,11 @@ function getItemIcon(item) {
     else if (item.slot === '신발') iconClass = 'ra-boot';
     else if (item.slot === '장갑') iconClass = 'ra-glove';
     else if (item.type === 'potion') iconClass = item.subType === 'hp' ? 'ra-health-potion' : 'ra-flask';
-    else if (item.type === 'stone') iconClass = item.subType === 'transcendent' ? 'ra-crystals' : 'ra-diamond';
+    else if (item.type === 'stone') {
+        if (item.subType === 'transcendent') iconClass = 'ra-crystals';
+        else if (item.subType === 'protect') iconClass = 'ra-shield';
+        else iconClass = 'ra-diamond';
+    }
     else if (item.type === 'return_talisman') iconClass = 'ra-scroll-unfurled';
     else if (item.type === 'trash') iconClass = 'ra-broken-bone';
     else if (item.type === 'sigil') iconClass = 'ra-flare'; 
@@ -1391,10 +1395,13 @@ function restAtInn(cost) {
 }
 
 function openBlacksmith() {
-    let w = getStoneCount('weapon'), a = getStoneCount('armor'), t = getStoneCount('transcendent');
+    let w = getStoneCount('weapon'), a = getStoneCount('armor'), t = getStoneCount('transcendent'), p = getStoneCount('protect');
     let html = `<h2>대장간</h2><p>보유 골드: <strong style="color:var(--accent-gold);">${player.gold} G</strong></p>
-        <div style="background:rgba(20,18,16,0.8); border:1px solid var(--border-aged); padding:8px; border-radius:4px; margin-bottom:12px; font-size:13px; display:flex; justify-content:space-around;">
-            <span>⚔️ 무기: <strong style="color:var(--accent-red);">${w}</strong></span><span>🛡️ 방어구: <strong style="color:var(--accent-blue);">${a}</strong></span><span>🔮 초월(균열): <strong style="color:#ff77ff;">${t}</strong></span>
+        <div style="background:rgba(20,18,16,0.8); border:1px solid var(--border-aged); padding:8px; border-radius:4px; margin-bottom:12px; font-size:13px; display:flex; justify-content:space-around; flex-wrap:wrap; gap:6px;">
+            <span>⚔️ 무기: <strong style="color:var(--accent-red);">${w}</strong></span>
+            <span>🛡️ 방어구: <strong style="color:var(--accent-blue);">${a}</strong></span>
+            <span>🔮 초월(균열): <strong style="color:#ff77ff;">${t}</strong></span>
+            <span>🔰 보호권: <strong style="color:var(--accent-gold);">${p}</strong></span>
         </div>`;
     let gears = player.inventory.filter(i => i.type === 'gear');
     if (gears.length > 0) html += `<button class="btn-choice full-width" style="justify-content:center; margin-bottom:8px; background:linear-gradient(to bottom, #4a2424, #2a1414);" onclick="game.sellAllGear()">💰 안 입는 장비 일괄 판매 (잠금 제외)</button>`;
@@ -1442,6 +1449,7 @@ function openGeneralStore() {
     html += `<h3 style="margin-top:15px;">강화석 상점</h3>`;
     html += `<button class="btn-choice full-width" style="justify-content:center; margin:6px 0;" onclick="game.buyStone('무기 강화석', 'weapon', 1500)"><i class="ra ra-diamond" style="color:#d9534f;"></i> 무기 강화석 (1,500 G)</button>`;
     html += `<button class="btn-choice full-width" style="justify-content:center; margin:6px 0;" onclick="game.buyStone('방어구 강화석', 'armor', 1000)"><i class="ra ra-diamond" style="color:#5bc0de;"></i> 방어구 강화석 (1,000 G)</button>`;
+    html += `<button class="btn-choice full-width" style="justify-content:center; margin:6px 0;" onclick="game.buyStone('장비 파괴 보호권', 'protect', 50000)"><i class="ra ra-shield" style="color:#e5b840;"></i> 장비 파괴 보호권 (50,000 G)</button>`;
     html += `<button class="btn-choice full-width" style="justify-content:center; margin-top:15px;" onclick="game.closeModal(); game.openShoppingStreet();">뒤로 가기</button>`;
     showModal(html);
 }
@@ -1503,12 +1511,24 @@ function confirmEnhance(slot) {
     if(bonus.matk > 0) bonusHtml += `마법 공격력 <span style="color:var(--accent-gold);">+${bonus.matk}</span> `;
     if(bonus.def > 0) bonusHtml += `방어력 <span style="color:var(--accent-gold);">+${bonus.def}</span> `;
 
+    let protectCount = getStoneCount('protect');
+    let protectHtml = "";
+    if (destroyRate > 0) {
+        protectHtml = `<div style="margin-top:12px; text-align:center; background:rgba(229, 184, 64, 0.1); padding:8px; border:1px solid var(--accent-gold); border-radius:4px;">
+            <label style="cursor:pointer; color:var(--accent-gold); font-weight:bold; display:flex; align-items:center; justify-content:center; gap:8px;">
+                <input type="checkbox" id="use-protect-checkbox" ${protectCount > 0 ? '' : 'disabled'}>
+                🔰 장비 파괴 보호권 사용 (보유: ${protectCount}개)
+            </label>
+        </div>`;
+    }
+
     let html = `<h2>⚠️ 장비 강화 시도</h2><div style="background:#000; padding:15px; border:1px solid var(--border-aged); border-radius:4px; margin-bottom:15px; text-align:left; line-height:1.8;">
         <div style="color:var(--victory); font-weight:bold;">✓ 성공 확률: ${successRate}%</div><div style="color:var(--text-muted);">✗ 실패 확률 (수치 유지): ${totalFail - dropRate}%</div>
         ${cur >= 5 ? `<div style="color:var(--accent-gold);">📉 실패 확률 (수치 1 하락): ${dropRate}%</div>` : ''}
         ${cur >= 8 ? `<div style="color:var(--accent-red); font-weight:bold;">💥 장비 파괴 확률: ${destroyRate}%</div>` : ''}
         <div style="margin-top:10px; font-size:12px; border-top:1px dashed var(--border-aged); padding-top:8px;">소모: ${reqStoneName} 1개</div>
         <div style="margin-top:4px; font-size:12px; color:var(--text-main);">✨ <strong>성공 시 예상 스탯:</strong> ${bonusHtml}</div>
+        ${protectHtml}
     </div><div style="display:flex; gap:12px; margin-top:20px;">
         <button class="btn-choice full-width" style="justify-content:center;" onclick="game.executeEnhance('${slot}')">확인 (강화 진행)</button>
         <button class="btn-choice full-width" style="justify-content:center;" onclick="game.openEnhanceModal()">취소</button>
@@ -1519,6 +1539,16 @@ function executeEnhance(slot) {
     let eq = player.equipment[slot]; if (!eq) return;
     let reqStoneType = (slot === '주무기' || slot === '보조무기') ? 'weapon' : 'armor'; if (eq.grade === '균열') reqStoneType = 'transcendent';
     let stoneIdx = player.inventory.findIndex(i => i.type === 'stone' && i.subType === reqStoneType); if (stoneIdx === -1) return; 
+    
+    let useProtect = false;
+    let protectCheckbox = document.getElementById('use-protect-checkbox');
+    if (protectCheckbox && protectCheckbox.checked) {
+        let pIdx = player.inventory.findIndex(i => i.type === 'stone' && i.subType === 'protect');
+        if (pIdx === -1) { alert("⚠️ 보호권이 부족합니다!"); return; }
+        useProtect = true;
+        if (player.inventory[pIdx].count > 1) player.inventory[pIdx].count--; else player.inventory.splice(pIdx, 1);
+    }
+
     if (player.inventory[stoneIdx].count > 1) player.inventory[stoneIdx].count--; else player.inventory.splice(stoneIdx, 1);
 
     let cur = eq.enhance || 0, bonus = getEnhanceBonus(eq, cur); 
@@ -1531,14 +1561,23 @@ function executeEnhance(slot) {
         if (eq.baseAtk !== undefined && eq.baseAtk > 0) eq.atk += bonus.atk; if (eq.baseMatk !== undefined && eq.baseMatk > 0) eq.matk += bonus.matk; if (eq.baseDef !== undefined && eq.baseDef > 0) eq.def += bonus.def;
         logNarrative(`✨ <span style="color:var(--victory); font-weight:bold;">[강화 성공]</span> [${eq.name}] (+${eq.enhance}) 강화 성공!`, "reward", "system");
     } else if (roll < successRate + destroyRate) {
-        player.equipment[slot] = null; logNarrative(`💥 <span style="color:var(--accent-red); font-weight:bold;">[장비 파괴]</span> [${eq.name}] (+${cur}) 산산조각!`, "combat", "system");
+        if (useProtect) {
+            player.enhanceFailStack = (player.enhanceFailStack || 0) + 1;
+            logNarrative(`🛡️ <span style="color:var(--accent-gold); font-weight:bold;">[파괴 보호]</span> 보호권의 기운이 [${eq.name}]의 파괴를 막아냈습니다! (수치 유지)`, "reward", "system");
+        } else {
+            player.equipment[slot] = null; 
+            logNarrative(`💥 <span style="color:var(--accent-red); font-weight:bold;">[장비 파괴]</span> [${eq.name}] (+${cur}) 산산조각!`, "combat", "system");
+        }
     } else if (roll < successRate + destroyRate + dropRate) {
         player.enhanceFailStack = (player.enhanceFailStack || 0) + 1; let degradeBonus = getEnhanceBonus(eq, cur - 1); eq.enhance = Math.max(0, cur - 1);
         if (eq.atk !== undefined && eq.baseAtk !== undefined) eq.atk = Math.max(eq.baseAtk, eq.atk - degradeBonus.atk);
         if (eq.matk !== undefined && eq.baseMatk !== undefined) eq.matk = Math.max(eq.baseMatk, eq.matk - degradeBonus.matk);
         if (eq.def !== undefined && eq.baseDef !== undefined) eq.def = Math.max(eq.baseDef, eq.def - degradeBonus.def);
         logNarrative(`❌ [강화 실패] 수치 하락! (+${cur} ➔ +${eq.enhance})`, "combat", "system");
-    } else { player.enhanceFailStack = (player.enhanceFailStack || 0) + 1; logNarrative(`❌ [강화 실패] 수치 유지.`, "combat", "system"); }
+    } else { 
+        player.enhanceFailStack = (player.enhanceFailStack || 0) + 1; 
+        logNarrative(`❌ [강화 실패] 수치 유지.`, "combat", "system"); 
+    }
     closeModal(); openEnhanceModal(); updateUI(); autoSave();
 }
 
@@ -1623,7 +1662,7 @@ function replaceRelic(type, idx) {
 function exploreVillage() {
     let ch = CHAPTERS[currentChapterIdx], hub = ch.hub, npcDialogs = [];
     if (hub === "바람노을 성채") npcDialogs = [{ name: "부상당한 경비병", text: "콜록... 조심하시오. 저 숲 너머에는 인간의 피를 맛본 마물들이 득시글거린다오." }, { name: "지친 보급관", text: "식량도, 화살도 턱없이 부족해. 의뢰 게시판에서 뭐라도 수주해서 골드를 벌어오게." }, { name: "성채 지휘관", text: "영원원정대의 맹세를 잊지 마라!" }];
-    else if (hub === "별빛 연금학회 요새") npcDialogs = [{ name: "광기어린 연금술사", text: "심연의 피! 완벽한 현자의 돌을 만들 수 있어!" }, { name: "기록 보관학자", text: "과거 마법사들의 오만함이 이 요새를 얼어붙게 만들었고, 금기된 실험이 괴물들을 탄생시켰지." }, { name: "요새 방위대장", text: "상점거리에 들러서 단단히 준비해두게." }];
+    else if (hub === "별빛 연금학회 요새") npcDialogs = [{ name: "광기어린 연금술사", text: "심연의 피! 완벽한 현자의 돌을 만들 수 있어!" }, { name: "기록 보관학자", text: "과거 마법 세력들의 오만함이 이 요새를 얼어붙게 만들었고, 금기된 실험이 괴물들을 탄생시켰지." }, { name: "요새 방위대장", text: "상점거리에 들러서 단단히 준비해두게." }];
     else npcDialogs = [{ name: "침묵의 감시자", text: "........" }, { name: "최후의 사제", text: "신들조차 눈을 감아버린 세상입니다." }, { name: "노련한 원정대원", text: "여기까지 오다니... 당신은 진짜 괴물이군." }];
     let npc = npcDialogs[Math.floor(Math.random() * npcDialogs.length)];
     let html = `<h2>마을 주변 탐색</h2><div style="background:rgba(20,18,16,0.8); border:1px solid var(--border-aged); padding:20px; border-radius:4px; margin-bottom:15px; box-shadow:inset 0 0 15px rgba(0,0,0,0.8);"><div style="color:var(--accent-gold); font-weight:bold; margin-bottom:12px; font-size:16px;"><i class="ra ra-player"></i> ${npc.name}</div><div style="font-size:15px; color:var(--text-main); line-height:1.7; font-style:italic;">"${npc.text}"</div></div><button class="btn-choice full-width" style="justify-content:center; margin-top:15px;" onclick="game.closeModal()">탐색 종료</button>`;
@@ -1807,6 +1846,29 @@ function triggerBossCombat() {
     currentEnemy = { name: `[👑 보스] ${ch.boss}`, hp: ch.hp, maxHp: ch.hp, atk: ch.lv * 15 + 25, def: ch.lv * 5 + 5, matk: ch.lv * 15 + 20, mres: ch.lv * 5, isBoss: true };
     logNarrative(`챕터 보스 <span class="log-combat">${currentEnemy.name}</span> 등장!`, "combat", "system");
     renderCombatActions(); updateUI(); autoSave();
+}
+
+function checkLevelUp() {
+    let leveledUp = false;
+    while (player.exp >= player.maxExp) {
+        player.exp -= player.maxExp; player.level++; player.statPoints += 3;
+        player.maxExp = Math.floor(player.maxExp * 1.35); leveledUp = true;
+        logNarrative(`🎉 레벨 업! Lv.${player.level} 달성! (스탯 포인트 +3)`, "reward", "system");
+    }
+    if (leveledUp) { player.hp = getMaxHp(); player.mp = getMaxMp(); updateUI(); }
+}
+
+function triggerRelicDrop() {
+    let relicTypes = ['str', 'dex', 'int', 'con']; let typeNames = { 'str': '힘', 'dex': '민첩', 'int': '지능', 'con': '체력' };
+    let rollType = relicTypes[Math.floor(Math.random() * relicTypes.length)];
+    let gradeRoll = Math.random(), grade = "일반", percent = 0;
+    if (gradeRoll < 0.05) { grade = "전설"; percent = Math.floor(Math.random() * 5) + 12; } else if (gradeRoll < 0.20) { grade = "영웅"; percent = Math.floor(Math.random() * 4) + 8; } else if (gradeRoll < 0.50) { grade = "희귀"; percent = Math.floor(Math.random() * 3) + 5; } else { grade = "정예"; percent = Math.floor(Math.random() * 3) + 2; }
+    let prefixes = ["잊혀진", "고대의", "타락한", "성스러운", "빛나는"]; let suffixes = ["성배", "왕관", "수정", "기록", "조각상"];
+    let name = `${prefixes[Math.floor(Math.random() * prefixes.length)]} ${suffixes[Math.floor(Math.random() * suffixes.length)]}`;
+    let newRelic = { name, type: rollType, typeName: typeNames[rollType], percent, grade };
+    logNarrative(`🌟 <strong class="grade-${grade}">[유물 발견] ${name} (${typeNames[rollType]} +${percent}%)</strong>`, "reward", "system");
+    if (player.relics.length < 3) { player.relics.push(newRelic); logNarrative(`유물이 장착 슬롯에 자동 장착되었습니다.`, "system", "system"); updateUI(); } 
+    else { openRelicChoiceModal(newRelic); }
 }
 
 // ==========================================
