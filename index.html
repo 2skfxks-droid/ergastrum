@@ -1774,13 +1774,19 @@ function generateEquipment(slot, grade, chIdx) {
     gear.baseAtk = gear.atk || 0; gear.baseMatk = gear.matk || 0; gear.baseDef = gear.def || 0;
 
     let optionCount = gradeIdx <= 1 ? 0 : (gradeIdx === 2 ? 1 : (gradeIdx === 3 ? 2 : (gradeIdx === 4 ? 3 : 4)));
-    let possibleOptions = ['str', 'dex', 'int', 'con', 'crit', 'mp'];
-    for (let i = 0; i < optionCount; i++) {
-        let optType = possibleOptions[Math.floor(Math.random() * possibleOptions.length)];
-        while (gear.options.some(o => o.type === optType)) { optType = possibleOptions[Math.floor(Math.random() * possibleOptions.length)]; }
-        let val = (chIdx + 1) * 2 + (gradeIdx * 3); if (optType === 'crit') val = 2 + gradeIdx;
+let possibleOptions = ['str', 'dex', 'int', 'con', 'crit', 'mp'];
+for (let i = 0; i < optionCount; i++) {
+    let optType = possibleOptions[Math.floor(Math.random() * possibleOptions.length)];
+    let val = (chIdx + 1) * 2 + (gradeIdx * 3); if (optType === 'crit') val = 2 + gradeIdx;
+
+    // 이미 존재하는 옵션인지 확인하고, 존재하면 수치만 합산 (원하시면 합산 안 하고 각각 별개의 줄로 넣어도 됩니다)
+    let existingOpt = gear.options.find(o => o.type === optType);
+    if (existingOpt) {
+        existingOpt.val += val;
+    } else {
         gear.options.push({ type: optType, val });
     }
+}
     return gear;
 }
 
