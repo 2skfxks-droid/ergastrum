@@ -124,15 +124,91 @@
         .grade-전설 { color: #ffdb4d; border-color: #e5b840; background: rgba(43, 36, 18, 0.6); text-shadow: 0 0 8px rgba(255,219,77,0.5); }
         .grade-균열 { color: #ff77ff; border-color: #aa22aa; background: rgba(60, 10, 60, 0.6); text-shadow: 0 0 8px rgba(255,119,255,0.6); }
 
+           /* 모바일 및 태블릿 최적화 */
         @media screen and (max-width: 1024px) {
-            body { align-items: flex-start; min-height: 100vh; padding: 0; }
-            #game-wrapper { width: 100vw; height: 100vh; height: 100dvh; grid-template-columns: 1fr; grid-template-rows: 50px 1fr; border: none; border-radius: 0; }
-            .panel { display: none; }
-            #center-display { grid-column: 1 / -1; padding: 10px; gap: 10px; }
-            header { padding: 0 10px; }
-            .game-title { font-size: 14px; letter-spacing: 2px; }
-            .action-container { grid-template-columns: 1fr; }
-            .btn-choice { padding: 10px 14px; font-size: 13.5px; }
+            body { 
+                align-items: flex-start; 
+                min-height: 100vh; 
+                padding: 0; 
+                overflow-y: auto; /* 바디 스크롤 활성화 */
+            }
+
+            /* 기존 Grid를 Flex로 변경하여 세로로 길게 쌓이도록 구성 */
+            #game-wrapper { 
+                width: 100vw; 
+                height: auto; 
+                min-height: 100dvh; 
+                display: flex; 
+                flex-direction: column; 
+                border: none; 
+                border-radius: 0; 
+                overflow-y: visible;
+                box-shadow: none;
+            }
+
+            /* 상단 메뉴 고정 (스크롤해도 항상 보이도록) */
+            header { 
+                position: sticky; 
+                top: 0; 
+                z-index: 100; 
+                padding: 10px; 
+                min-height: 55px; 
+                flex-shrink: 0;
+            }
+            /* 모바일 화면 공간 확보를 위해 타이틀 텍스트 숨김 */
+            .game-title { display: none; }
+            .header-menu { gap: 6px; }
+
+            /* 숨겨져 있던 패널을 다시 보이게 하고 세로형에 맞게 변경 */
+            .panel { 
+                display: flex; 
+                width: 100%; 
+                border: none; 
+                border-bottom: 2px solid #14110f; 
+                padding: 15px; 
+                max-height: none; 
+                overflow-y: visible;
+                flex-shrink: 0;
+            }
+            .panel:last-child { 
+                border-bottom: none; 
+                border-top: 2px solid #14110f; 
+            }
+
+            /* 중앙 텍스트 및 액션 영역 */
+            #center-display { 
+                width: 100%; 
+                flex: 1; /* 남은 공간을 차지하도록 */
+                min-height: 60vh; 
+                padding: 15px; 
+                gap: 12px; 
+            }
+            .narrative-box { min-height: 250px; font-size: 14px; }
+
+            /* 액션 버튼 (화면이 작을 때를 대비해 기본 2열, 더 작아지면 1열) */
+            .action-container { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .btn-choice { padding: 12px; font-size: 13px; }
+
+            /* 인벤토리 모달 최적화 (7열 -> 4열) */
+            .modal-box { width: 95vw; padding: 15px; max-height: 85vh; }
+            .modal-box h2 { font-size: 18px; }
+            .inventory-grid { 
+                grid-template-columns: repeat(4, 1fr); 
+                gap: 6px; 
+                max-height: 40vh; 
+            }
+
+            /* 시작/로그인 화면 최적화 */
+            .intro-box { width: 95vw; padding: 25px 15px; }
+            .intro-box h1 { font-size: 22px; margin-top: 20px; }
+            .intro-input { width: 90%; font-size: 14px; padding: 12px; }
+        }
+
+        /* 좁은 스마트폰 화면을 위한 추가 최적화 */
+        @media screen and (max-width: 600px) {
+            .action-container { grid-template-columns: 1fr; } /* 버튼을 1열로 꽉 차게 */
+            header .btn-mini { font-size: 11px; padding: 6px 8px; }
+            .inventory-grid { grid-template-columns: repeat(4, 1fr); }
         }
     </style>
 </head>
