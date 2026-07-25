@@ -1953,13 +1953,13 @@ function renderInventoryModal() {
     showModal(html);
 }
 
-function openInventory() { if (gameState === "COMBAT") { logNarrative(`⚠️ 전투 중 인벤토리 사용 불가!`, "combat", "system"); return; } selectedInvIdx = null; currentInvTab = 'all'; renderInventoryModal(); }
+function openInventory() { if (gameState === "COMBAT") { logNarrative(`⚠️ 전투 중 인벤토리 사용 불가!`, "combat", "system"); return; } selectedInvIdx = null; 'null'; renderInventoryModal(); }
 function setInventoryTab(tabName) { currentInvTab = tabName; selectedInvIdx = null; renderInventoryModal(); }
 function selectInventoryItem(idx) { if (player.inventory[idx]) { selectedInvIdx = idx; renderInventoryModal(); } }
 function toggleLockItem(idx) { let item = player.inventory[idx]; if (!item) return; item.isLocked = !item.isLocked; renderInventoryModal(); autoSave(); }
 function discardItem(idx) {
     let item = player.inventory[idx]; if (!item || item.isLocked) return;
-    if (confirm(`[${item.name}]을(를) 버리시겠습니까?`)) { if (item.count > 1) item.count--; else player.inventory.splice(idx, 1); selectedInvIdx = null; openInventory(); updateUI(); autoSave(); }
+    if (confirm(`[${item.name}]을(를) 버리시겠습니까?`)) { if (item.count > 1) item.count--; else player.inventory.splice(idx, 1); selectedInvIdx = null; renderInventoryModal(); updateUI(); autoSave(); }
 }
 function equipItem(idx) {
     let item = player.inventory[idx]; if (!item || item.type !== 'gear') return;
@@ -1969,10 +1969,9 @@ function equipItem(idx) {
     if (player.equipment[item.slot]) addItemToInventory(player.equipment[item.slot]);
     player.equipment[item.slot] = { ...item, count: 1 };
     if (item.count > 1) item.count--; else player.inventory.splice(idx, 1);
-    selectedInvIdx = null; openInventory(); updateUI(); autoSave();
+    selectedInvIdx = null; renderInventoryModal(); updateUI(); autoSave();
 }
-function unequip(slot) { let item = player.equipment[slot]; if (item) { if (player.inventory.length >= 50) { alert("가방이 가득 찼습니다!"); return; } addItemToInventory(item); player.equipment[slot] = null; selectedInvIdx = null; openInventory(); updateUI(); autoSave(); } }
-
+function unequip(slot) { let item = player.equipment[slot]; if (item) { if (player.inventory.length >= 50) { alert("가방이 가득 찼습니다!"); return; } addItemToInventory(item); player.equipment[slot] = null; selectedInvIdx = null; renderInventoryModal(); updateUI(); autoSave(); } }
 function useReturnStoneQuick() {
     let sIdx = player.inventory.findIndex(item => item.type === 'return_stone');
     let tIdx = player.inventory.findIndex(item => item.type === 'return_talisman');
