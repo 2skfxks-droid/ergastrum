@@ -1081,6 +1081,14 @@ async function winCombat() {
         let medalGain = isBoss ? 5 : 1; player.honor += medalGain;
         await appendLogAsync(`🏆 훈장 ${medalGain}개 획득!`, "reward", "system");
         
+        // 🌟 [추가된 부분] 균열 전용 골드 및 경험치 폭풍 획득 로직! 
+        let riftGold = Math.floor(100 * riftFloor * (isBoss ? 5 : 1) * (1 + getAccessoryEffect('goldBoost')/100));
+        let riftExp = Math.floor(90 * riftFloor * (isBoss ? 6 : 1));
+        player.gold += riftGold; player.exp += riftExp;
+        await appendLogAsync(`보상: 골드 +${riftGold}, 경험치 +${riftExp}`, "reward", "system");
+        checkLevelUp(); // 균열에서도 레벨업이 정상적으로 처리되도록 추가!
+        // 🌟 [추가된 부분 끝]
+
         if (isBoss) {
             if (Math.random() < 0.15) {
                 let slot = ["주무기", "보조무기", "머리", "상의", "바지", "신발", "장갑", "목걸이", "반지1", "반지2"][Math.floor(Math.random() * 10)];
@@ -1112,6 +1120,7 @@ async function winCombat() {
         autoSave(); return;
     }
 
+    // --- (아래는 일반 원정 전투 보상 로직 그대로 유지) ---
     let isElite = currentEnemy.name.includes("정예");
     let goldGain = Math.floor(50 * (currentChapterIdx + 1) * (isBoss ? 5 : (isElite ? 3 : 1)) * (1 + getAccessoryEffect('goldBoost')/100));
     let expGain = Math.floor(45 * (currentChapterIdx + 1) * (isBoss ? 6 : (isElite ? 2.8 : 1)));
