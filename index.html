@@ -1405,11 +1405,17 @@ function openBlacksmith() {
         </div>`;
     let gears = player.inventory.filter(i => i.type === 'gear');
     if (gears.length > 0) html += `<button class="btn-choice full-width" style="justify-content:center; margin-bottom:8px; background:linear-gradient(to bottom, #4a2424, #2a1414);" onclick="game.sellAllGear()">💰 안 입는 장비 일괄 판매 (잠금 제외)</button>`;
-    html += `<button class="btn-choice full-width" style="justify-content:center; margin-bottom:15px; background:linear-gradient(to bottom, #2c241b, #1a1510);" onclick="game.openEnhanceModal()"><i class="ra ra-anvil"></i> 장비 강화소 열기</button>`;
+    
+    // 강화를 위한 대장간 전용 구매 탭 추가
+    html += `<h3 style="margin-top:10px;">강화소 및 특수 아이템</h3>`;
+    html += `<button class="btn-choice full-width" style="justify-content:center; margin-bottom:6px; background:linear-gradient(to bottom, #2c241b, #1a1510);" onclick="game.openEnhanceModal()"><i class="ra ra-anvil"></i> 장비 강화소 열기</button>`;
+    html += `<button class="btn-choice full-width" style="justify-content:center; margin-bottom:15px; border-color:#e5b840;" onclick="game.buyStone('장비 파괴 보호권', 'protect', 50000)"><i class="ra ra-shield" style="color:#e5b840;"></i> 장비 파괴 보호권 구입 (50,000 G)</button>`;
+
     html += `<h3>상시 장비 구입</h3>`;
     html += `<button class="btn-choice full-width" style="justify-content:center; margin:6px 0;" onclick="game.buyBaseGear('롱소드', '주무기', '물리', 150, 15, 0)"><i class="ra ra-sword"></i> 롱소드 (150 G)</button>`;
     html += `<button class="btn-choice full-width" style="justify-content:center; margin:6px 0;" onclick="game.buyBaseGear('참나무 지팡이', '주무기', '마법', 150, 0, 18)"><i class="ra ra-crystal-wand"></i> 참나무 지팡이 (150 G)</button>`;
     html += `<button class="btn-choice full-width" style="justify-content:center; margin:6px 0;" onclick="game.buyBaseGear('사슬 투구', '머리', '공용', 100, 0, 0)"><i class="ra ra-helmet"></i> 사슬 투구 (100 G)</button>`;
+    
     html += `<h3 style="margin-top:15px;">장비 판매</h3>`;
     if (gears.length === 0) html += `<p style="font-size:12px; color:var(--text-muted); text-align:center;">판매할 장비가 없습니다.</p>`;
     gears.forEach(item => {
