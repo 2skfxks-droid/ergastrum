@@ -2358,7 +2358,7 @@ function checkLevelUp() {
     let leveledUp = false;
     while (player.exp >= player.maxExp) {
         player.exp -= player.maxExp; player.level++; player.statPoints += 5;
-        player.maxExp = Math.floor(player.maxExp * 1.35); leveledUp = true;
+        player.maxExp = Math.floor(player.maxExp * 1.2); leveledUp = true;
         
         if (player.level >= 5 && player.level % 2 === 1) { 
             let spentTp = (player.talents.offense || 0) + (player.talents.defense || 0) + (player.talents.chaos || 0);
