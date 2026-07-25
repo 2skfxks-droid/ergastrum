@@ -682,7 +682,7 @@ const GEAR_TYPES = {
 const HIT_FLAVORS = {
     glance: ["검날이 상대의 단단한 비늘(갑옷)을 아슬아슬하게 스쳤다. 타격이 다소 깊지 못했다.", "적의 반사적인 회피 동작에 허를 찔렸다. 중심이 무너지며 위력이 반감되었다."],
     normal: ["정확한 각도로 적의 급소를 향해 묵직한 충격을 밀어 넣었다.", "방어의 허를 파고든 정직한 일격이 상대의 육체에 깊은 타상을 남겼다."],
-    critical: ["상대의 움직임이 멈춘 찰나의 순간, 방어의 공백을 완벽하게 관통하는 예리한 일격이 터졌다!", "예측을 불허하는 각도에서 날아간 공격이 적의 치명적인 약점을 정확히 후벼팠다!"],
+    critical: ["상대의 움직임이 멈춘 찰나의 순간, 방어의 공백을 완벽하게 관통하는 예리한 일격이 터졌다!", "예측을 허불하는 각도에서 날아간 공격이 적의 치명적인 약점을 정확히 후벼팠다!"],
     critExecute: ["뇌전이 치듯 순식간에 시야가 번쩍였다! 적의 갑옷이 박살 나며 시야를 붉게 물들인다!", "뼈와 살을 파고드는 끔찍한 충격! 완벽하고 잔혹한 급소 강타가 작렬했다!"]
 };
 function getRandomFlavor(type) { let arr = HIT_FLAVORS[type]; return arr[Math.floor(Math.random() * arr.length)]; }
@@ -769,58 +769,50 @@ function applyLoadedData(saveData) {
     if(!player.statuses) player.statuses = [];
     
     if (!player.tpUpdated) {
-      // =========================================================
-    // [수정된 보정 패치] 1.2배 완화된 공식에 맞춰 누적 경험치 기준으로 레벨 재산정
-    // =========================================================
-    if (!player.expBalancedToV2) {
-        // 1. 현재 레벨과 maxExp를 역산하여 대략적인 '누적 경험치(totalExp)'를 산출합니다.
-        // (기존 1.35배 기준 또는 현재 보유 exp를 합산)
-        let totalExp = player.exp;
-        let tempExpForLevel = 100;
-        for (let i = 1; i < player.level; i++) {
-            totalExp += tempExpForLevel;
-            tempExpForLevel = Math.floor(tempExpForLevel * 1.35); // 기존 가혹했던 공식 기준 누적치 합산
-        }
+        if (!player.expBalancedToV2) {
+            let totalExp = player.exp;
+            let tempExpForLevel = 100;
+            for (let i = 1; i < player.level; i++) {
+                totalExp += tempExpForLevel;
+                tempExpForLevel = Math.floor(tempExpForLevel * 1.35);
+            }
 
-        // 2. 완화된 공식(기초 100, 1.2배 증가)을 기준으로, 이 누적 경험치로 몇 레벨까지 갈 수 있는지 시뮬레이션합니다.
-        let newLevel = 1;
-        let newMaxExp = 100;
-        
-        while (totalExp >= newMaxExp) {
-            totalExp -= newMaxExp;
-            newLevel++;
-            newMaxExp = Math.floor(newMaxExp * 1.20); // 새로운 1.2배 완화 공식 적용
-        }
-
-        // 3. 계산된 새 레벨과 경험치로 덮어씌웁니다.
-        let levelDiff = newLevel - player.level;
-        if (levelDiff > 0) {
-            player.level = newLevel;
-            player.statPoints += (levelDiff * 3); // 오르지 못했던 스탯 포인트 소급
+            let newLevel = 1;
+            let newMaxExp = 100;
             
-            // TP(특성 포인트) 보상도 함께 계산 (레벨 5부터 2레벨마다, 최대 12)
-            let spentTp = (player.talents.offense || 0) + (player.talents.defense || 0) + (player.talents.chaos || 0);
-            let targetTotalTp = 0;
-            for (let l = 5; l <= player.level; l += 2) {
-                targetTotalTp++;
+            while (totalExp >= newMaxExp) {
+                totalExp -= newMaxExp;
+                newLevel++;
+                newMaxExp = Math.floor(newMaxExp * 1.20);
             }
-            targetTotalTp = Math.min(12, targetTotalTp);
-            let earnedTp = Math.max(0, targetTotalTp - spentTp);
-            if (earnedTp > 0) {
-                player.tp = (player.tp || 0) + earnedTp;
+
+            let levelDiff = newLevel - player.level;
+            if (levelDiff > 0) {
+                player.level = newLevel;
+                player.statPoints += (levelDiff * 3);
+                
+                let spentTp = (player.talents.offense || 0) + (player.talents.defense || 0) + (player.talents.chaos || 0);
+                let targetTotalTp = 0;
+                for (let l = 5; l <= player.level; l += 2) {
+                    targetTotalTp++;
+                }
+                targetTotalTp = Math.min(12, targetTotalTp);
+                let earnedTp = Math.max(0, targetTotalTp - spentTp);
+                if (earnedTp > 0) {
+                    player.tp = (player.tp || 0) + earnedTp;
+                }
             }
+
+            player.maxExp = newMaxExp;
+            player.exp = totalExp;
+
+            setTimeout(() => {
+                alert(`[시스템 업데이트] 레벨업 경험치 요구치 완화(1.2배) 패치 적용!\n누적 경험치가 재조정되어 레벨이 [Lv.${player.level}]로 갱신되었습니다.`);
+            }, 1000);
+
+            player.expBalancedToV2 = true;
         }
 
-        player.maxExp = newMaxExp;
-        player.exp = totalExp;
-
-        setTimeout(() => {
-            alert(`[시스템 업데이트] 레벨업 경험치 요구치 완화(1.2배) 패치 적용!\n누적 경험치가 재조정되어 레벨이 [Lv.${player.level}]로 갱신되었습니다.`);
-        }, 1000);
-
-        player.expBalancedToV2 = true;
-    }
-    // =========================================================
         let expectedTotalTp = Math.max(0, Math.floor((player.level - 3) / 2));
         let spentTp = player.talents.offense + player.talents.defense + player.talents.chaos;
         let compensation = expectedTotalTp - spentTp;
@@ -1151,7 +1143,6 @@ function triggerRiftCombat(isBoss) {
     let atk = Math.floor(800 + (N * 120) * Math.pow(1.02, N));
     let def = 300 + (N * 20);
     
-    // 5배수 보스 층일 때는 부조리한 하드 CC기(기절, 빙결, 침묵, 수면, 혼란)를 제외하여 밸런스 유지
     let modifiers = isBoss ? [
         { prefix: "불타오르는", type: "burn" }, { prefix: "맹독의", type: "poison" }, 
         { prefix: "피에 굶주린", type: "bleed" }, { prefix: "눈먼", type: "blind" }, 
@@ -1417,7 +1408,7 @@ async function playerUltimate() {
                 let res = calculateCombatDamage(base, true, currentEnemy);
                 currentEnemy.hp = Math.max(0, currentEnemy.hp - res.dmg);
                 await delay(120); 
-                await appendLogAsync(`🔥 ${i+1차 폭발}! 거대한 불길과 함께 <span class="combat-damage">${res.dmg}</span> 피해! (남은 HP: ${currentEnemy.hp}/${currentEnemy.maxHp})`, 'reward', 'player');
+                await appendLogAsync(`🔥 ${i+1}차 폭발! 거대한 불길과 함께 <span class="combat-damage">${res.dmg}</span> 피해! (남은 HP: ${currentEnemy.hp}/${currentEnemy.maxHp})`, 'reward', 'player');
                 if (currentEnemy.hp <= 0) break;
             }
             if (currentEnemy.hp > 0) {
