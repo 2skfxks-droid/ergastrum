@@ -2140,7 +2140,7 @@ function triggerBossCombat() {
 function checkLevelUp() {
     let leveledUp = false;
     while (player.exp >= player.maxExp) {
-        player.exp -= player.maxExp; player.level++; player.statPoints += 3;
+        player.exp -= player.maxExp; player.level++; player.statPoints += 5;
         player.maxExp = Math.floor(player.maxExp * 1.20); leveledUp = true;
         
         if (player.level >= 5 && player.level % 2 === 1) { 
