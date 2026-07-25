@@ -581,7 +581,8 @@ let player = {
 };
 
 let gameState = "HUB", unlockedChapter = 1, currentChapterIdx = 0, questCleared = new Array(10).fill(false), dungeonDepth = 0, currentEnemy = null;
-let selectedInvIdx = null, currentInvTab = 'all', pendingRelic = null, currentTypewriter = null; 
+let selectedInvIdx = null, currentInvTab = 'all', pendingRelic = null;
+let currentTypewriter = null; // 수정: 전역 공간 변수
 let isRift = false, riftFloor = 1, currentRiftDebuff = null;
 let combatTextDelay = 150, isProcessingTurn = false;
 
@@ -751,6 +752,8 @@ function updateUI() {
 
 function enterHub() {
     gameState = "HUB"; currentEnemy = null; isRift = false; currentRiftDebuff = null;
+    isProcessingTurn = false; // 안전장치: 귀환 시 무조건 턴 잠금 해제
+    setCombatButtonsDisabled(false); // 버튼 비활성화 해제
     let ch = CHAPTERS[currentChapterIdx];
     logNarrative(`안전한 거점 [${ch.hub}]에 도착했습니다. 정비를 서두르세요.`, "system", "system");
     
@@ -1227,6 +1230,12 @@ async function useItem(idx) {
 
 function useItemInventory(idx) { useItem(idx); selectedInvIdx = null; }
 
+// 신규 함수: 전투 중 인벤토리를 열어 소모품만 보여주는 처리
+function useItemInCombatModal() {
+    if (isProcessingTurn) { logNarrative(`⚠️ 현재 행동 중입니다.`, "combat", "system"); return; }
+    selectedInvIdx = null; currentInvTab = 'consumable'; renderInventoryModal();
+}
+
 function openSigilRelicSelect(itemIdx) {
     if (player.relics.length === 0) { alert("장착 중인 유물이 없습니다! 각인은 장착된 유물에만 부여 가능합니다."); return; }
     let html = `<h2>심연의 각인 사용</h2><p>강화할 장착 유물을 선택하세요.</p>`;
@@ -1653,253 +1662,4 @@ function openRelicChoiceModal(newRelic) {
     });
     html += `<div style="font-size:12px; font-weight:bold; color:var(--text-main); margin-top:10px; margin-bottom:6px;">보관함 유물</div>`;
     player.relicStorage.forEach((r, idx) => {
-        html += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,12,10,0.8); border:1px solid var(--border-aged); padding:8px; margin-bottom:6px; border-radius:3px;"><span class="grade-${r.grade}">[${r.grade}] ${r.name} (${r.typeName} +${r.percent}%)</span><button class="btn-mini" style="background:#4a2424;" onclick="game.replaceRelic('storage', ${idx})">이 유물과 교체</button></div>`;
-    });
-    html += `<button class="btn-choice full-width" style="justify-content:center; margin-top:15px; background:var(--btn-bg);" onclick="game.closeModal()">새 유물 포기하기</button>`;
-    showModal(html);
-}
-function replaceRelic(type, idx) {
-    let replacedName = "";
-    if (type === 'equipped') { replacedName = player.relics[idx].name; player.relics[idx] = pendingRelic; } 
-    else { replacedName = player.relicStorage[idx].name; player.relicStorage[idx] = pendingRelic; }
-    let newName = pendingRelic.name; pendingRelic = null; closeModal(); logNarrative(`유물 교체! ([${replacedName}] ➔ [${newName}])`, "reward", "system"); updateUI(); autoSave();
-}
-
-function exploreVillage() {
-    let ch = CHAPTERS[currentChapterIdx], hub = ch.hub, npcDialogs = [];
-    if (hub === "바람노을 성채") npcDialogs = [{ name: "부상당한 경비병", text: "콜록... 조심하시오. 저 숲 너머에는 인간의 피를 맛본 마물들이 득시글거린다오." }, { name: "지친 보급관", text: "식량도, 화살도 턱없이 부족해. 의뢰 게시판에서 뭐라도 수주해서 골드를 벌어오게." }, { name: "성채 지휘관", text: "영원원정대의 맹세를 잊지 마라!" }];
-    else if (hub === "별빛 연금학회 요새") npcDialogs = [{ name: "광기어린 연금술사", text: "심연의 피! 완벽한 현자의 돌을 만들 수 있어!" }, { name: "기록 보관학자", text: "과거 마법 세력들의 오만함이 이 요새를 얼어붙게 만들었고, 금기된 실험이 괴물들을 탄생시켰지." }, { name: "요새 방위대장", text: "상점거리에 들러서 단단히 준비해두게." }];
-    else npcDialogs = [{ name: "침묵의 감시자", text: "........" }, { name: "최후의 사제", text: "신들조차 눈을 감아버린 세상입니다." }, { name: "노련한 원정대원", text: "여기까지 오다니... 당신은 진짜 괴물이군." }];
-    let npc = npcDialogs[Math.floor(Math.random() * npcDialogs.length)];
-    let html = `<h2>마을 주변 탐색</h2><div style="background:rgba(20,18,16,0.8); border:1px solid var(--border-aged); padding:20px; border-radius:4px; margin-bottom:15px; box-shadow:inset 0 0 15px rgba(0,0,0,0.8);"><div style="color:var(--accent-gold); font-weight:bold; margin-bottom:12px; font-size:16px;"><i class="ra ra-player"></i> ${npc.name}</div><div style="font-size:15px; color:var(--text-main); line-height:1.7; font-style:italic;">"${npc.text}"</div></div><button class="btn-choice full-width" style="justify-content:center; margin-top:15px;" onclick="game.closeModal()">탐색 종료</button>`;
-    showModal(html);
-}
-
-function generateOneRandomQuest(forceType) {
-    let ch = CHAPTERS[currentChapterIdx], chMult = currentChapterIdx + 1;
-    let types = ['hunt', 'gather', 'explore'], type = forceType ? forceType : types[Math.floor(Math.random() * types.length)];
-    if (type === 'hunt') {
-        let tCount = Math.floor(Math.random() * 5) + 3;
-        return { id: 'dyn_hunt_'+Date.now()+Math.floor(Math.random()*1000), title: `토벌: ${ch.name} 야생 마물 소탕`, desc: `《${ch.name} 야생 마물》을(를) ${tCount}마리 처치하십시오.`, type: 'hunt', targetMonster: `${ch.name} 야생 마물`, targetCount: tCount, currentCount: 0, reward: { gold: tCount * 60 * chMult, exp: tCount * 45 * chMult } };
-    } else if (type === 'gather') {
-        let trashNames = ["야생 곰의 가죽", "이끼 낀 뼈조각", "오염된 마물의 발톱", "누더기 가죽 조각", "녹슨 단검 조각", "썩어버린 뇌수"];
-        let tName = trashNames[currentChapterIdx % trashNames.length], tCount = Math.floor(Math.random() * 3) + 2;
-        return { id: 'dyn_gather_'+Date.now()+Math.floor(Math.random()*1000), title: `수집: ${tName} 확보`, desc: `《${tName}》을(를) 총 ${tCount}개 입수하십시오.`, type: 'gather', targetItem: tName, targetCount: tCount, currentCount: 0, reward: { gold: tCount * 75 * chMult, exp: tCount * 55 * chMult } };
-    } else {
-        let tNum = Math.floor(Math.random() * 4) + 4;
-        return { id: 'dyn_explore_'+Date.now()+Math.floor(Math.random()*1000), title: `정찰: 깊숙한 곳 탐사`, desc: `탐험 깊이를 ${tNum} 단계 이상 달성하십시오.`, type: 'explore', targetCount: tNum, currentCount: 0, reward: { gold: tNum * 65 * chMult, exp: tNum * 50 * chMult } };
-    }
-}
-function generateRandomBulletinQuests() { player.availableBulletinQuests = [generateOneRandomQuest('hunt'), generateOneRandomQuest('gather'), generateOneRandomQuest('explore')]; }
-function checkSubQuestProgress(actionType) {
-    if (!player.activeQuests || player.activeQuests.length === 0) return;
-    player.activeQuests.forEach(q => {
-        if (q.type === actionType) {
-            if (actionType === 'hunt' && currentEnemy && (currentEnemy.name.includes(q.targetMonster) || q.targetMonster.includes("야생 마물"))) q.currentCount = Math.min(q.targetCount, q.currentCount + 1);
-            else if (actionType === 'explore' && dungeonDepth >= q.currentCount) q.currentCount = Math.min(q.targetCount, dungeonDepth);
-        }
-    }); updateUI();
-}
-
-function openBulletinBoard() {
-    if (player.availableBulletinQuests.length === 0 && player.activeQuests.length === 0) generateRandomBulletinQuests();
-    let html = `<h2>의뢰 게시판</h2><h3>수주 중인 의뢰 (${player.activeQuests.length}/3)</h3>`;
-    if (player.activeQuests.length === 0) html += `<p style="font-size:12px; color:var(--text-muted);">수주 중인 의뢰가 없습니다.</p>`;
-    player.activeQuests.forEach((q, idx) => {
-        let isDone = (q.currentCount >= q.targetCount);
-        html += `<div style="background:rgba(20,18,16,0.8); border:1px solid var(--border-highlight); padding:10px; border-radius:3px; margin-bottom:8px;"><div style="font-weight:bold; color:var(--accent-gold);">[진행중] ${q.title} (${q.currentCount}/${q.targetCount})</div><div style="font-size:12px; color:var(--text-muted); margin:4px 0;">${q.desc}</div><div style="font-size:12px; margin-bottom:6px;">보상: 골드 +${q.reward.gold} G, 경험치 +${q.reward.exp}</div>${isDone ? `<button class="btn-choice full-width" style="justify-content:center; background:linear-gradient(to bottom, #1e3b20, #0f2411);" onclick="game.completeSubQuest(${idx})">의뢰 완료</button>` : `<button class="btn-mini" onclick="game.abandonSubQuest(${idx})" style="background:linear-gradient(to bottom, #3b1e1e, #1f0b0b);">의뢰 포기</button>`}</div>`;
-    });
-    html += `<h3>수주 가능한 의뢰 목록</h3>`;
-    player.availableBulletinQuests.forEach((q, idx) => {
-        html += `<div style="background:rgba(20,18,16,0.8); border:1px solid var(--border-aged); padding:10px; margin-bottom:8px; border-radius:3px;"><div style="font-weight:bold; color:var(--accent-gold);">${q.title}</div><div style="font-size:12px; color:var(--text-muted); margin:4px 0;">${q.desc}</div><div style="font-size:12px; margin-bottom:6px;">보상: 골드 +${q.reward.gold} G, 경험치 +${q.reward.exp}</div><button class="btn-mini" onclick="game.acceptSubQuest(${idx})">의뢰 수주하기</button></div>`;
-    });
-    html += `<button class="btn-choice full-width" style="justify-content:center; margin-top:10px;" onclick="game.refreshBulletinBoard()">🔄 의뢰 목록 새로고침 (비용: 30 G)</button>`;
-    html += `<button class="btn-choice full-width" style="justify-content:center; margin-top:15px;" onclick="game.closeModal()">돌아가기</button>`;
-    showModal(html);
-}
-function refreshBulletinBoard() { if (player.gold >= 30) { player.gold -= 30; generateRandomBulletinQuests(); closeModal(); openBulletinBoard(); updateUI(); autoSave(); } else { logNarrative(`골드가 부족합니다!`, "combat", "system"); } }
-function acceptSubQuest(idx) { if (player.activeQuests.length >= 3) { logNarrative(`⚠️ 수주 한도 초과!`, "combat", "system"); return; } player.activeQuests.push({ ...player.availableBulletinQuests[idx] }); player.availableBulletinQuests.splice(idx, 1); updateUI(); closeModal(); openBulletinBoard(); autoSave(); }
-function abandonSubQuest(idx) { if (confirm("의뢰 포기?")) { player.activeQuests.splice(idx, 1); closeModal(); openBulletinBoard(); updateUI(); autoSave(); } }
-function completeSubQuest(idx) {
-    let q = player.activeQuests[idx]; if (!q) return;
-    if (q.type === 'gather') {
-        let req = q.targetCount;
-        for (let i = player.inventory.length - 1; i >= 0; i--) {
-            let item = player.inventory[i];
-            if (item.name === q.targetItem) { if (item.count > req) { item.count -= req; req = 0; break; } else { req -= item.count; player.inventory.splice(i, 1); } }
-            if (req <= 0) break;
-        }
-    }
-    player.gold += q.reward.gold; player.exp += q.reward.exp; logNarrative(`🎉 서브 의뢰 [${q.title}] 완료!`, "reward", "system");
-    let cType = q.type; player.activeQuests.splice(idx, 1); player.availableBulletinQuests.push(generateOneRandomQuest(cType));
-    checkLevelUp(); closeModal(); openBulletinBoard(); updateUI(); autoSave();
-}
-
-function selectChapterModal() {
-    let html = `<h2>원정 지역 선택</h2>`;
-    for (let i = 0; i < unlockedChapter; i++) { html += `<button class="btn-choice full-width" style="justify-content:center; margin:4px 0;" onclick="game.showChapterIntroModal(${i});"><i class="ra ra-compass"></i> 제 ${i+1}장: ${CHAPTERS[i].name} (${CHAPTERS[i].hub})</button>`; }
-    html += `<button class="btn-choice full-width" style="justify-content:center; margin-top:10px;" onclick="game.closeModal()">돌아가기</button>`;
-    showModal(html);
-}
-
-function showChapterIntroModal(chIdx) {
-    let ch = CHAPTERS[chIdx];
-    let html = `<div id="intro-modal-body" style="cursor:pointer;" onclick="game.skipTypewriter()">
-        <div style="text-align:center; margin-bottom:20px;"><h2 style="font-size:18px; color:var(--text-muted); margin-bottom:5px; font-weight:normal;">[ ${ch.hub} ]에서 출발</h2><h1 style="font-size:32px; color:var(--accent-gold); font-family: 'Cinzel', 'Noto Serif KR', serif; margin-top:0; text-shadow: 2px 2px 4px #000;">제 ${chIdx+1}장: ${ch.name}</h1></div>
-        <div style="background:rgba(10,8,7,0.8); border:1px solid var(--border-aged); padding:25px; min-height:180px; margin-bottom:20px; box-shadow:inset 0 0 20px rgba(0,0,0,1);"><p id="typewriter-text" style="font-size:15px; line-height:1.9; color:var(--text-main); text-align:justify; margin:0; text-shadow: 1px 1px 2px #000;"></p></div>
-        <div style="text-align:center; margin-bottom:15px; font-size:15px;"><i class="ra ra-monster-skull" style="color:var(--accent-red);"></i> 목표 보스: <strong style="color:var(--accent-red); font-size:16px;">${ch.boss}</strong></div>
-        <p style="text-align:center; font-size:12px; color:var(--text-muted); margin-bottom:15px;">(화면을 클릭하면 텍스트가 빠르게 완성됩니다)</p>
-    </div>
-    <button id="btn-start-dungeon" class="btn-choice full-width" style="text-align:center; justify-content:center; background:linear-gradient(to bottom, #3b1515, #1f0b0b); border-color:var(--accent-red); opacity:0.5; pointer-events:none;" onclick="game.confirmStartDungeon(${chIdx})">출정 준비 중...</button>
-    <button class="btn-choice full-width" style="text-align:center; justify-content:center; margin-top:10px;" onclick="game.closeModal()">거점으로 돌아가기</button>`;
-    showModal(html);
-
-    let text = ch.expandedLore || ch.lore;
-    let el = document.getElementById("typewriter-text"); el.innerHTML = ""; let i = 0;
-    window.typewriterFullText = text;
-    window.currentTypewriter = setInterval(() => { el.innerHTML += text.charAt(i); i++; if (i >= text.length) game.finishTypewriter(); }, 30);
-}
-function finishTypewriter() {
-    if (window.currentTypewriter) { clearInterval(window.currentTypewriter); window.currentTypewriter = null; }
-    let el = document.getElementById("typewriter-text"), btn = document.getElementById("btn-start-dungeon");
-    if(el && btn) { el.innerHTML = window.typewriterFullText || ""; btn.style.opacity = "1"; btn.style.pointerEvents = "auto"; btn.innerHTML = `<i class="ra ra-sword"></i> 원정 시작`; btn.classList.add("stat-alert"); }
-}
-function skipTypewriter() { game.finishTypewriter(); }
-function confirmStartDungeon(chIdx) {
-    closeModal(); currentChapterIdx = chIdx; gameState = "DUNGEON"; dungeonDepth = 0; isRift = false; currentRiftDebuff = null;
-    logNarrative(`[제 ${chIdx+1}장: ${CHAPTERS[chIdx].name}]에 진입했습니다.`, "system", "system");
-    promptNextExploration(); updateUI(); autoSave();
-}
-
-function openQuestModal() {
-    let ch = CHAPTERS[currentChapterIdx], cleared = questCleared[currentChapterIdx];
-    let html = `<h2>거점 NPC 메인 임무 보고</h2><p>토벌 목표: <strong>${ch.boss}</strong></p>`;
-    if (cleared) { html += `<p class="log-reward">✅ 보스 토벌 완료! 다음 단계로 나아가십시오.</p><button class="btn-choice full-width" style="justify-content:center; background:linear-gradient(to bottom, #325c32, #183318);" onclick="game.completeChapterQuest()">임무 완료 보고</button>`; } 
-    else { html += `<p class="log-combat">❌ 아직 보스를 처치하지 못했습니다.</p>`; }
-    html += `<button class="btn-choice full-width" style="justify-content:center; margin-top:10px;" onclick="game.closeModal()">닫기</button>`;
-    showModal(html);
-}
-function completeChapterQuest() {
-    closeModal(); logNarrative(`🎉 메인 임무 완료 보고 승인! 대륙에 새겨진 어둠이 한 겹 벗겨집니다.`, "reward", "system");
-    if (currentChapterIdx === 0 && player.tier === 0) { openJobModal(1); return; }
-    else if (currentChapterIdx === 3 && player.tier === 1) { openJobModal(2); return; }
-    if (unlockedChapter === currentChapterIdx + 1 && unlockedChapter < 10) { unlockedChapter++; currentChapterIdx = unlockedChapter - 1; }
-    enterHub();
-}
-function openJobModal(tier) {
-    let html = `<h2>${tier}차 전직 선택</h2>`;
-    if (tier === 1) {
-        html += `<button class="btn-choice full-width" style="justify-content:center; margin:4px 0;" onclick="game.setJob('전사', 1)"><i class="ra ra-sword"></i> 전사</button>`;
-        html += `<button class="btn-choice full-width" style="justify-content:center; margin:4px 0;" onclick="game.setJob('마법사', 1)"><i class="ra ra-crystal-wand"></i> 마법사</button>`;
-        html += `<button class="btn-choice full-width" style="justify-content:center; margin:4px 0;" onclick="game.setJob('도적', 1)"><i class="ra ra-daggers"></i> 도적</button>`;
-    } else {
-        if (player.job === '전사') { html += `<button class="btn-choice full-width" style="justify-content:center; margin:4px 0;" onclick="game.setJob('성기사', 2)"><i class="ra ra-sun-radiations"></i> 성기사</button><button class="btn-choice full-width" style="justify-content:center; margin:4px 0;" onclick="game.setJob('광전사', 2)"><i class="ra ra-bleeding-eye"></i> 광전사</button>`; } 
-        else if (player.job === '마법사') { html += `<button class="btn-choice full-width" style="justify-content:center; margin:4px 0;" onclick="game.setJob('원소술사', 2)"><i class="ra ra-burning-meteor"></i> 원소술사</button><button class="btn-choice full-width" style="justify-content:center; margin:4px 0;" onclick="game.setJob('흑마법사', 2)"><i class="ra ra-skull"></i> 흑마법사</button>`; } 
-        else { html += `<button class="btn-choice full-width" style="justify-content:center; margin:4px 0;" onclick="game.setJob('암살자', 2)"><i class="ra ra-dripping-knife"></i> 암살자</button><button class="btn-choice full-width" style="justify-content:center; margin:4px 0;" onclick="game.setJob('의적', 2)"><i class="ra ra-fast-backward-goggles"></i> 의적</button>`; }
-    }
-    showModal(html);
-}
-function setJob(jobName, tier) { player.job = jobName; player.tier = tier; closeModal(); logNarrative(`[${jobName}](으)로 전직하였습니다!`, "reward", "system"); enterHub(); }
-
-function promptNextExploration() {
-    const container = document.getElementById("action-container"); let canMeetBoss = dungeonDepth >= 7;
-    if (canMeetBoss && Math.random() < 0.4) {
-        container.innerHTML = `
-            <button class="btn-choice full-width stat-alert" style="background:linear-gradient(to bottom, #3b1515, #1f0b0b); border-color:var(--accent-red); justify-content:center;" onclick="game.triggerBossCombat()"><i class="ra ra-crown"></i> 최종 보스와 조우하기 (${CHAPTERS[currentChapterIdx].boss})</button>
-            <button class="btn-choice full-width" style="justify-content:center;" onclick="game.exploreForward()"><i class="ra ra-footprint"></i> 주변을 더 수색한다</button>
-            <button class="btn-choice full-width" style="justify-content:center;" onclick="game.useReturnStoneExploration()"><i class="ra ra-crystal-ball"></i> 거점으로 탈출</button>`;
-    } else {
-        container.innerHTML = `
-            <button class="btn-choice full-width" style="justify-content:center;" onclick="game.exploreForward()"><i class="ra ra-compass"></i> 앞으로 전진하기 (탐험 깊이: ${dungeonDepth})</button>
-            <button class="btn-choice full-width" style="justify-content:center;" onclick="game.useReturnStoneExploration()"><i class="ra ra-crystal-ball"></i> 거점으로 탈출</button>`;
-    }
-    updateUI();
-}
-
-function exploreForward() {
-    dungeonDepth++; checkSubQuestProgress('explore');
-    let hpRegenRate = getAccessoryEffect('hpRegen') + getSigilBonus('hpRegen');
-    if (hpRegenRate > 0) player.hp = Math.min(getMaxHp(), player.hp + Math.max(1, Math.floor(getMaxHp() * (hpRegenRate / 100))));
-    let mpRegenRate = getAccessoryEffect('mpRegen');
-    if (mpRegenRate > 0) player.mp = Math.min(getMaxMp(), player.mp + Math.max(1, Math.floor(getMaxMp() * (mpRegenRate / 100))));
-
-    logNarrative(`차가운 발걸음이 깊은 곳으로 향합니다... (탐험 깊이 ${dungeonDepth})`, "system", "system");
-    let rand = Math.random();
-    if (rand < 0.35) triggerCombat(false); else if (rand < 0.55) triggerCombat(true); else if (rand < 0.70) triggerForkNode(); else if (rand < 0.85) triggerRestNode(); else triggerTrapNode();
-}
-function triggerForkNode() {
-    logNarrative(`어둠 속에서 두 갈래의 갈림길이 나타났습니다. 어느 쪽을 택하시겠습니까?`, "system", "system");
-    document.getElementById("action-container").innerHTML = `<button class="btn-choice" onclick="game.resolveFork('safe')"><i class="ra ra-player-dodge"></i> 고요한 샛길로 우회하기</button><button class="btn-choice" onclick="game.resolveFork('danger')"><i class="ra ra-tombstone"></i> 피비린내 나는 험한 길로 돌파</button>`;
-}
-function resolveFork(choice) {
-    if (choice === 'safe') { let gold = 20 * (currentChapterIdx + 1); player.gold += gold; logNarrative(`안전한 길을 돌아 나오며 ${gold} G 발견.`, "reward", "system"); } 
-    else { if (Math.random() < 0.5) { triggerCombat(true); return; } else { let heal = Math.floor(getMaxHp() * 0.25); player.hp = Math.min(getMaxHp(), player.hp + heal); logNarrative(`험난한 길 끝 은밀한 샘에서 체력 ${heal} 회복.`, "reward", "system"); } }
-    promptNextExploration(); updateUI();
-}
-function triggerRestNode() { let heal = Math.floor(getMaxHp() * 0.3); player.hp = Math.min(getMaxHp(), player.hp + heal); logNarrative(`잠시 숨을 고르며 상처 보살핌. 체력 ${heal} 회복.`, "reward", "system"); promptNextExploration(); }
-function triggerTrapNode() { let dmg = Math.floor(getMaxHp() * 0.12); player.hp = Math.max(1, player.hp - dmg); logNarrative(`⚠️ 맹독 덫을 밟아 ${dmg} 피해!`, "combat", "system"); promptNextExploration(); }
-
-function triggerCombat(isElite) {
-    gameState = "COMBAT"; let ch = CHAPTERS[currentChapterIdx];
-    let name = isElite ? `[정예] 흉포한 ${ch.name} 수호수` : `${ch.name} 야생 마물`;
-    let hp = Math.floor(ch.lv * 60 * (isElite ? 1.8 : 1.0) + (dungeonDepth * 15)), atk = Math.floor(ch.lv * 10 * (isElite ? 1.4 : 1.0)), def = Math.floor(ch.lv * 3);
-    currentEnemy = { name, hp, maxHp: hp, atk, def, matk: atk, mres: def, isBoss: false };
-    logNarrative(`적 조우: <span class="log-combat">${name}</span> (HP: ${hp})`, "combat", "system");
-    renderCombatActions(); updateUI(); autoSave();
-}
-function triggerBossCombat() {
-    gameState = "COMBAT"; let ch = CHAPTERS[currentChapterIdx];
-    currentEnemy = { name: `[👑 보스] ${ch.boss}`, hp: ch.hp, maxHp: ch.hp, atk: ch.lv * 15 + 25, def: ch.lv * 5 + 5, matk: ch.lv * 15 + 20, mres: ch.lv * 5, isBoss: true };
-    logNarrative(`챕터 보스 <span class="log-combat">${currentEnemy.name}</span> 등장!`, "combat", "system");
-    renderCombatActions(); updateUI(); autoSave();
-}
-
-function checkLevelUp() {
-    let leveledUp = false;
-    while (player.exp >= player.maxExp) {
-        player.exp -= player.maxExp; player.level++; player.statPoints += 3;
-        player.maxExp = Math.floor(player.maxExp * 1.35); leveledUp = true;
-        logNarrative(`🎉 레벨 업! Lv.${player.level} 달성! (스탯 포인트 +3)`, "reward", "system");
-    }
-    if (leveledUp) { player.hp = getMaxHp(); player.mp = getMaxMp(); updateUI(); }
-}
-
-function triggerRelicDrop() {
-    let relicTypes = ['str', 'dex', 'int', 'con']; let typeNames = { 'str': '힘', 'dex': '민첩', 'int': '지능', 'con': '체력' };
-    let rollType = relicTypes[Math.floor(Math.random() * relicTypes.length)];
-    let gradeRoll = Math.random(), grade = "일반", percent = 0;
-    if (gradeRoll < 0.05) { grade = "전설"; percent = Math.floor(Math.random() * 5) + 12; } else if (gradeRoll < 0.20) { grade = "영웅"; percent = Math.floor(Math.random() * 4) + 8; } else if (gradeRoll < 0.50) { grade = "희귀"; percent = Math.floor(Math.random() * 3) + 5; } else { grade = "정예"; percent = Math.floor(Math.random() * 3) + 2; }
-    let prefixes = ["잊혀진", "고대의", "타락한", "성스러운", "빛나는"]; let suffixes = ["성배", "왕관", "수정", "기록", "조각상"];
-    let name = `${prefixes[Math.floor(Math.random() * prefixes.length)]} ${suffixes[Math.floor(Math.random() * suffixes.length)]}`;
-    let newRelic = { name, type: rollType, typeName: typeNames[rollType], percent, grade };
-    logNarrative(`🌟 <strong class="grade-${grade}">[유물 발견] ${name} (${typeNames[rollType]} +${percent}%)</strong>`, "reward", "system");
-    if (player.relics.length < 3) { player.relics.push(newRelic); logNarrative(`유물이 장착 슬롯에 자동 장착되었습니다.`, "system", "system"); updateUI(); } 
-    else { openRelicChoiceModal(newRelic); }
-}
-
-// ==========================================
-// 전체 함수 window.game 매핑 
-// ==========================================
-window.game = {
-    setLanguage, closeModal, loginOrRegister, manualServerSave, loadGame, startAdventure,
-    openChatModal, sendChatMessage,
-    openInventory, setInventoryTab, selectInventoryItem, equipItem, unequip, toggleLockItem, discardItem, useItem, useItemInventory,
-    openStatModal, addStatModal, enterHub, showChapterIntroModal, skipTypewriter, confirmStartDungeon, selectChapterModal,
-    exploreVillage, openShoppingStreet, openInnModal, restAtInn, openBlacksmith, openGeneralStore,
-    openQuestModal, completeChapterQuest, openJobModal, setJob, openAltarModal, buyAltar,
-    openRelics, moveToStorage, equipFromStorage, dropStorageRelic, dropRelic, openRelicChoiceModal, replaceRelic,
-    openBulletinBoard, refreshBulletinBoard, acceptSubQuest, abandonSubQuest, completeSubQuest,
-    useReturnStoneQuick, useReturnStoneExploration, exploreForward, resolveFork,
-    triggerBossCombat, playerAttack, playerSkill, playerUltimate, tryFlee,
-    sellAllGear, sellItem, sellAllTrash, openEnhanceModal, confirmEnhance, executeEnhance,
-    buyBaseGear, buyPotion, buyTalisman, buyStone,
-    enterRift, promptNextRiftExploration, triggerRiftCombat, escapeRift, openSigilRelicSelect, openSigilOptionSelect, applySigil
-};
-
-window.onload = function() { 
-    updateUI(); 
-    setLanguage('ko'); 
-};
-</script>
-</body>
-</html>
+        html += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,12,10,0.8); border:1px solid var(--border-aged); padding:8px; margin-bottom:6px; border-radius:3px;"><span class="grade-${r.grade}">[${r.grade}] ${r.name} (${r.typeName} +${r.percent}%)</span><button class="btn-mini" style="background:#4a2424;" onclick="game.replaceRelic('storage', ${idx})">이 유물과저는 그런 것을 하도록 프로그램되지 않았습니다.
