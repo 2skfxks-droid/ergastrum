@@ -63,7 +63,6 @@
         @keyframes shake { 0% { transform: translate(0, 0); } 20% { transform: translate(-5px, 2px); } 40% { transform: translate(5px, -2px); } 60% { transform: translate(-3px, 1px); } 80% { transform: translate(3px, -1px); } 100% { transform: translate(0, 0); } }
         .shake-effect { animation: shake 0.3s ease-in-out; }
 
-        /* 플로팅 데미지 폰트 스타일 */
         @keyframes floatUp {
             0% { transform: translateY(0) scale(0.8); opacity: 0; }
             20% { transform: translateY(-15px) scale(1.1); opacity: 1; }
@@ -483,7 +482,6 @@ function applyStatus(target, id, duration) {
     else target.statuses.push({ id, duration });
 }
 
-// 📌 플로팅 데미지 폰트 텍스트 생성 함수
 function showFloatingText(text, type = 'damage', isPlayerSide = false) {
     const targetBox = isPlayerSide ? document.getElementById('player-status-panel') : document.getElementById('enemy-panel-box');
     if (!targetBox) return;
@@ -492,27 +490,25 @@ function showFloatingText(text, type = 'damage', isPlayerSide = false) {
     ft.className = 'floating-text';
     ft.innerText = text;
 
-    // 스타일에 따른 위치 및 색상 설정
-    let color = '#ffffff'; // 기본 데미지(빨강)
+    let color = '#ffffff'; // 일반 공격 하얀색
     let fontSize = '20px';
 
     if (type === 'critical') {
-        color = '#ffdb4d'; // 치명타(노랑)
+        color = '#ffdb4d'; // 치명타 노랑
         fontSize = '26px';
         ft.innerText = `⚡ ${text} CRIT!`;
     } else if (type === 'heal') {
-        color = '#6be082'; // 회복(초록)
+        color = '#6be082'; // 회복 초록
         fontSize = '22px';
         ft.innerText = `+${text}`;
     } else if (type === 'status') {
-        color = '#c485e0'; // 상태이상/특수(보라)
+        color = '#c485e0'; // 특수 보라
         fontSize = '18px';
     }
 
     ft.style.color = color;
     ft.style.fontSize = fontSize;
 
-    // 대상 패널 내 랜덤 오프셋 적용
     const rect = targetBox.getBoundingClientRect();
     ft.style.left = `${rect.left + rect.width / 2 + (Math.random() * 60 - 30)}px`;
     ft.style.top = `${rect.top + rect.height / 3}px`;
@@ -1470,13 +1466,20 @@ async function playerUltimate() {
         triggerEnemyPanelShake(); 
         
         if (jobGroup === "warrior") {
+            // 전사 궁극기: 태산명동참 (방어력 100% 무시 + 3턴 출혈 부여)
             await appendLogAsync(`💥 <strong style="color:var(--accent-red); font-size:16px;">[궁극기: 태산명동참]</strong> 대지를 가르는 거대한 검기!`, 'system', 'player');
             let res = calculateCombatDamage(getPlayerAtk() * 3.5, false, currentEnemy, false, 1.0); 
             currentEnemy.hp = Math.max(0, currentEnemy.hp - res.dmg);
             showFloatingText(res.dmg, 'critical', false);
             await appendLogAsync(`🛡️ 적의 방어력을 완전히 무시하며 <span class="combat-damage">${res.dmg}</span> 피해! (남은 HP: ${currentEnemy.hp}/${currentEnemy.maxHp})`, 'reward', 'player');
+            
+            if (currentEnemy.hp > 0) {
+                applyStatus(currentEnemy, 'bleed', 3);
+                await appendLogAsync(`🩸 <strong style="color:#a83232;">[출혈 부여]</strong> 강력한 참격의 여파로 적에게 3턴간 출혈을 입혔습니다!`, 'reward', 'player');
+            }
         } 
         else if (jobGroup === "mage") {
+            // 마법사 궁극기: 초신성 폭발 (2회 다단히트 + 화상 부여)
             await appendLogAsync(`💥 <strong style="color:var(--accent-blue); font-size:16px;">[궁극기: 초신성 폭발]</strong> 대기를 뒤흔드는 연쇄 마법 폭발!`, 'system', 'player');
             let base = getPlayerMatk() * 2.2; 
             for(let i = 0; i < 2; i++) {
@@ -1494,6 +1497,7 @@ async function playerUltimate() {
             }
         }
         else if (jobGroup === "rogue") {
+            // 도적 궁극기: 환영 난무 (3연속 치명타 + 3턴 맹독 부여)
             await appendLogAsync(`💥 <strong style="color:#c485e0; font-size:16px;">[궁극기: 환영 난무]</strong> 잔상을 남기며 3연속 급소 도륙!`, 'system', 'player');
             let base = getPlayerAtk() * 1.5 + getFinalDex() * 5.0; 
             for(let i=0; i<3; i++) {
@@ -1503,6 +1507,10 @@ async function playerUltimate() {
                 showFloatingText(res.dmg, 'critical', false);
                 await delay(120); await appendLogAsync(`⚡ ${i+1}격! 치명적인 급소 타격으로 <span class="combat-damage">${res.dmg}</span> 피해!`, 'reward', 'player');
                 if (currentEnemy.hp <= 0) break;
+            }
+            if (currentEnemy.hp > 0) {
+                applyStatus(currentEnemy, 'poison', 3);
+                await appendLogAsync(`🧪 <strong style="color:#6be082;">[맹독 부여]</strong> 칼날에 묻어 있던 치명적인 독이 적의 혈관을 타고 퍼집니다! (3턴 맹독)`, 'reward', 'player');
             }
         }
         
