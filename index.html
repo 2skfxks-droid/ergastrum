@@ -769,6 +769,46 @@ function applyLoadedData(saveData) {
     if(!player.statuses) player.statuses = [];
     
     if (!player.tpUpdated) {
+       // =========================================================
+    // [신규 추가] 레벨업 계수 완화(1.35 -> 1.2)에 따른 기존 유저 레벨/경험치 보정 패치
+    // =========================================================
+    if (!player.expBalancedToV2) {
+        // 1. 현재 유저의 레벨과 남은 exp를 바탕으로 '대략적인 누적 경험치'를 추정하거나,
+        // 안전하게 현재 레벨을 유지하면서 maxExp만 새 공식(1.2배)으로 맞춰줄 수 있습니다.
+        // 만약 완벽하게 총 누적 경험치 기준으로 재계산하고 싶다면 아래 방식을 씁니다.
+        
+        let currentLevel = player.level;
+        
+        // 새 공식(기초 maxExp 100, 1.2배 증가)에 맞춰 현재 레벨에 필요한 maxExp 재계산
+        let recalculatedMaxExp = 100;
+        for (let i = 1; i < currentLevel; i++) {
+            recalculatedMaxExp = Math.floor(recalculatedMaxExp * 1.20);
+        }
+        player.maxExp = recalculatedMaxExp;
+
+        // 현재 가지고 있는 exp가 새 maxExp보다 크면 초과분에 대해 레벨업 처리 혜택 부여
+        while (player.exp >= player.maxExp) {
+            player.exp -= player.maxExp;
+            player.level++;
+            player.statPoints += 3;
+            
+            // TP 지급 조건도 함께 체크 (레벨 5부터 2레벨마다, 최대 12)
+            let spentTp = (player.talents.offense || 0) + (player.talents.defense || 0) + (player.talents.chaos || 0);
+            let totalTp = spentTp + (player.tp || 0);
+            if (player.level >= 5 && player.level % 2 === 1 && totalTp < 12) {
+                player.tp++;
+            }
+            
+            player.maxExp = Math.floor(player.maxExp * 1.20);
+        }
+
+        setTimeout(() => {
+            alert(`[시스템 업데이트] 레벨업 경험치 요구치 완화 패치 적용!\n변경된 성장 공식에 맞춰 캐릭터의 레벨과 경험치가 재산정되었습니다.`);
+        }, 1000);
+
+        player.expBalancedToV2 = true;
+    }
+    // =========================================================
         let expectedTotalTp = Math.max(0, Math.floor((player.level - 3) / 2));
         let spentTp = player.talents.offense + player.talents.defense + player.talents.chaos;
         let compensation = expectedTotalTp - spentTp;
