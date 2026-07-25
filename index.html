@@ -63,6 +63,22 @@
         @keyframes shake { 0% { transform: translate(0, 0); } 20% { transform: translate(-5px, 2px); } 40% { transform: translate(5px, -2px); } 60% { transform: translate(-3px, 1px); } 80% { transform: translate(3px, -1px); } 100% { transform: translate(0, 0); } }
         .shake-effect { animation: shake 0.3s ease-in-out; }
 
+        /* 플로팅 데미지 폰트 스타일 */
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(0.8); opacity: 0; }
+            20% { transform: translateY(-15px) scale(1.1); opacity: 1; }
+            100% { transform: translateY(-60px) scale(1); opacity: 0; }
+        }
+        .floating-text {
+            position: absolute;
+            font-weight: 900;
+            font-family: 'Cinzel', 'Noto Serif KR', serif;
+            pointer-events: none;
+            z-index: 9999;
+            animation: floatUp 0.8s ease-out forwards;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
+        }
+
         .panel { background: var(--bg-panel); border-right: 2px solid #14110f; padding: 18px; display: flex; flex-direction: column; gap: 18px; overflow-y: auto; box-shadow: var(--box-shadow-inset); }
         .panel:last-child { border-right: none; border-left: 2px solid #14110f; }
         .section-box { background: rgba(15, 12, 10, 0.6); border: 1px solid var(--border-aged); padding: 12px; border-radius: 4px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
@@ -467,6 +483,44 @@ function applyStatus(target, id, duration) {
     else target.statuses.push({ id, duration });
 }
 
+// 📌 플로팅 데미지 폰트 텍스트 생성 함수
+function showFloatingText(text, type = 'damage', isPlayerSide = false) {
+    const targetBox = isPlayerSide ? document.getElementById('player-status-panel') : document.getElementById('enemy-panel-box');
+    if (!targetBox) return;
+
+    const ft = document.createElement('div');
+    ft.className = 'floating-text';
+    ft.innerText = text;
+
+    // 스타일에 따른 위치 및 색상 설정
+    let color = '#ff4d4d'; // 기본 데미지(빨강)
+    let fontSize = '20px';
+
+    if (type === 'critical') {
+        color = '#ffdb4d'; // 치명타(노랑)
+        fontSize = '26px';
+        ft.innerText = `⚡ ${text} CRIT!`;
+    } else if (type === 'heal') {
+        color = '#6be082'; // 회복(초록)
+        fontSize = '22px';
+        ft.innerText = `+${text}`;
+    } else if (type === 'status') {
+        color = '#c485e0'; // 상태이상/특수(보라)
+        fontSize = '18px';
+    }
+
+    ft.style.color = color;
+    ft.style.fontSize = fontSize;
+
+    // 대상 패널 내 랜덤 오프셋 적용
+    const rect = targetBox.getBoundingClientRect();
+    ft.style.left = `${rect.left + rect.width / 2 + (Math.random() * 60 - 30)}px`;
+    ft.style.top = `${rect.top + rect.height / 3}px`;
+
+    document.body.appendChild(ft);
+    setTimeout(() => ft.remove(), 800);
+}
+
 async function processStatuses(entity, isPlayer) {
     if (!entity.statuses || entity.statuses.length === 0) return true;
     
@@ -483,7 +537,10 @@ async function processStatuses(entity, isPlayer) {
         else if (s.id === 'freeze') { logMessages.push(`❄️빙결 (행동 불가)`); canAct = false; }
         else if (s.id === 'sleep') { logMessages.push(`💤수면 중... (행동 불가)`); canAct = false; }
 
-        if (dmg > 0) entity.hp = Math.max(1, entity.hp - dmg);
+        if (dmg > 0) {
+            entity.hp = Math.max(1, entity.hp - dmg);
+            showFloatingText(dmg, 'damage', isPlayer);
+        }
 
         s.duration--;
         if (s.duration <= 0) entity.statuses.splice(i, 1);
@@ -1043,7 +1100,7 @@ function openTalentModal() {
                             <span style="font-size:11px; font-weight:normal;">${btnText}</span>
                         </button>
                         <span class="tooltiptext"><strong style="color:var(--accent-gold);">${node.name}</strong><br><br>${node.desc}</span>
-                     </div>`;
+                   </div>`;
         });
         html += `</div>`;
     });
@@ -1226,6 +1283,7 @@ async function playerAttack() {
         if (hasStatus(player, 'confusion') && Math.random() < 0.30) {
             let selfDmg = Math.floor(getPlayerAtk() * 0.5);
             player.hp = Math.max(1, player.hp - selfDmg);
+            showFloatingText(selfDmg, 'damage', true);
             await appendLogAsync(`🌀 <span style="color:#c485e0; font-weight:bold;">[혼란]</span> 환각에 빠져 자신을 공격했습니다! <span class="combat-damage">${selfDmg}</span> 자해 피해!`, 'combat', 'player');
             updateUI(); await enemyTurnAsync(); return;
         }
@@ -1245,8 +1303,13 @@ async function playerAttack() {
         if (isRift) vampRate /= 2;
         if (isRift && currentRiftDebuff === '피의 저주') vampRate /= 2;
 
-        if (vampRate > 0) { let drained = Math.floor(combatRes.dmg * (vampRate / 100)); player.hp = Math.min(getMaxHp(), player.hp + drained); }
+        if (vampRate > 0) { 
+            let drained = Math.floor(combatRes.dmg * (vampRate / 100)); 
+            player.hp = Math.min(getMaxHp(), player.hp + drained); 
+            if (drained > 0) showFloatingText(drained, 'heal', true);
+        }
         currentEnemy.hp = Math.max(0, currentEnemy.hp - combatRes.dmg);
+        showFloatingText(combatRes.dmg, combatRes.isCrit ? 'critical' : 'damage', false);
         updateUI();
 
         await appendLogAsync(`<span class="log-flavor">"${combatRes.flavorText}"</span>`, 'flavor', 'player');
@@ -1277,6 +1340,7 @@ async function playerSkill() {
         try {
             let selfDmg = Math.floor(getPlayerAtk() * 0.5);
             player.hp = Math.max(1, player.hp - selfDmg);
+            showFloatingText(selfDmg, 'damage', true);
             await appendLogAsync(`🌀 <span style="color:#c485e0; font-weight:bold;">[혼란]</span> 환각에 빠져 자신을 공격했습니다! <span class="combat-damage">${selfDmg}</span> 자해 피해!`, 'combat', 'player');
             updateUI(); await enemyTurnAsync(); return;
         } finally { setCombatButtonsDisabled(false); isProcessingTurn = false; }
@@ -1320,16 +1384,28 @@ async function playerSkill() {
             triggerEnemyPanelShake(); 
             player._tempLog = null;
             let skillCalc = skill.calcDamage(player, currentEnemy);
-            if (player._tempLog) { await appendLogAsync(player._tempLog, 'reward', 'player'); player._tempLog = null; }
+            if (player._tempLog) { 
+                await appendLogAsync(player._tempLog, 'reward', 'player'); 
+                if (player._tempLog.includes("흡수")) {
+                    let match = player._tempLog.match(/체력 (\d+) 흡수/);
+                    if (match) showFloatingText(parseInt(match[1]), 'heal', true);
+                }
+                player._tempLog = null; 
+            }
 
             let combatRes = calculateCombatDamage(skillCalc.base, skillCalc.isMagic, currentEnemy);
             let vampRate = getAccessoryEffect('vampire') + getSigilBonus('vampire');
             if (player.talents && player.talents.offense >= 2) vampRate += 5; 
             
             if (isRift) vampRate /= 2; if (isRift && currentRiftDebuff === '피의 저주') vampRate /= 2;
-            if (vampRate > 0) player.hp = Math.min(getMaxHp(), player.hp + Math.floor(combatRes.dmg * (vampRate / 100)));
+            if (vampRate > 0) {
+                let drained = Math.floor(combatRes.dmg * (vampRate / 100));
+                player.hp = Math.min(getMaxHp(), player.hp + drained);
+                if (drained > 0) showFloatingText(drained, 'heal', true);
+            }
 
             currentEnemy.hp = Math.max(0, currentEnemy.hp - combatRes.dmg);
+            showFloatingText(combatRes.dmg, combatRes.isCrit ? 'critical' : 'damage', false);
             updateUI();
             
             await appendLogAsync(`<span class="log-flavor">"${combatRes.flavorText}"</span>`, 'flavor', 'player');
@@ -1362,6 +1438,7 @@ async function playerUltimate() {
         try {
             let selfDmg = Math.floor(getPlayerAtk() * 0.8);
             player.hp = Math.max(1, player.hp - selfDmg);
+            showFloatingText(selfDmg, 'damage', true);
             await appendLogAsync(`🌀 <span style="color:#c485e0; font-weight:bold;">[혼란]</span> 환각에 빠져 자신을 공격했습니다! <span class="combat-damage">${selfDmg}</span> 자해 피해!`, 'combat', 'player');
             updateUI(); await enemyTurnAsync(); return;
         } finally { setCombatButtonsDisabled(false); isProcessingTurn = false; }
@@ -1393,20 +1470,20 @@ async function playerUltimate() {
         triggerEnemyPanelShake(); 
         
         if (jobGroup === "warrior") {
-            // 전사 궁극기: 기존 대미지 유지(getPlayerAtk() * 3.5), 방어력 무시 100% (1.0) 적용[cite: 1]
             await appendLogAsync(`💥 <strong style="color:var(--accent-red); font-size:16px;">[궁극기: 태산명동참]</strong> 대지를 가르는 거대한 검기!`, 'system', 'player');
             let res = calculateCombatDamage(getPlayerAtk() * 3.5, false, currentEnemy, false, 1.0); 
             currentEnemy.hp = Math.max(0, currentEnemy.hp - res.dmg);
+            showFloatingText(res.dmg, 'critical', false);
             await appendLogAsync(`🛡️ 적의 방어력을 완전히 무시하며 <span class="combat-damage">${res.dmg}</span> 피해! (남은 HP: ${currentEnemy.hp}/${currentEnemy.maxHp})`, 'reward', 'player');
         } 
         else if (jobGroup === "mage") {
-            // 마법사 궁극기: 2회 다단히트 폭발 및 화상 상태이상 부여[cite: 1]
             await appendLogAsync(`💥 <strong style="color:var(--accent-blue); font-size:16px;">[궁극기: 초신성 폭발]</strong> 대기를 뒤흔드는 연쇄 마법 폭발!`, 'system', 'player');
             let base = getPlayerMatk() * 2.2; 
             for(let i = 0; i < 2; i++) {
                 triggerEnemyPanelShake();
                 let res = calculateCombatDamage(base, true, currentEnemy);
                 currentEnemy.hp = Math.max(0, currentEnemy.hp - res.dmg);
+                showFloatingText(res.dmg, res.isCrit ? 'critical' : 'damage', false);
                 await delay(120); 
                 await appendLogAsync(`🔥 ${i+1}차 폭발! 거대한 불길과 함께 <span class="combat-damage">${res.dmg}</span> 피해! (남은 HP: ${currentEnemy.hp}/${currentEnemy.maxHp})`, 'reward', 'player');
                 if (currentEnemy.hp <= 0) break;
@@ -1417,13 +1494,13 @@ async function playerUltimate() {
             }
         }
         else if (jobGroup === "rogue") {
-            // 도적 궁극기 (기존 유지)[cite: 1]
             await appendLogAsync(`💥 <strong style="color:#c485e0; font-size:16px;">[궁극기: 환영 난무]</strong> 잔상을 남기며 3연속 급소 도륙!`, 'system', 'player');
             let base = getPlayerAtk() * 1.5 + getFinalDex() * 5.0; 
             for(let i=0; i<3; i++) {
                 triggerEnemyPanelShake();
                 let res = calculateCombatDamage(base, false, currentEnemy, true); 
                 currentEnemy.hp = Math.max(0, currentEnemy.hp - res.dmg);
+                showFloatingText(res.dmg, 'critical', false);
                 await delay(120); await appendLogAsync(`⚡ ${i+1}격! 치명적인 급소 타격으로 <span class="combat-damage">${res.dmg}</span> 피해!`, 'reward', 'player');
                 if (currentEnemy.hp <= 0) break;
             }
@@ -1459,6 +1536,7 @@ async function enemyTurnAsync() {
     if (hasStatus(currentEnemy, 'confusion') && Math.random() < 0.30) {
         let selfDmg = Math.floor(currentEnemy.atk * 0.5);
         currentEnemy.hp = Math.max(0, currentEnemy.hp - selfDmg);
+        showFloatingText(selfDmg, 'damage', false);
         await appendLogAsync(`🌀 [혼란] 적이 환각에 빠져 자신을 공격해 <span class="combat-damage">${selfDmg}</span> 피해를 입었습니다!`, 'reward', 'enemy');
         updateUI();
         if (currentEnemy.hp <= 0) { await winCombat(); } else { await applyTurnEndRegen(); }
@@ -1493,7 +1571,10 @@ async function enemyTurnAsync() {
 
     if (isTrueDamage) await appendLogAsync(`💥 <span style="color:#ff77ff; font-weight:bold;">[혼돈의 일격]</span> 방어력을 완벽히 무시한 끔찍한 고정 피해!`, 'combat', 'enemy');
     
-    player.hp = Math.max(0, player.hp - mitigated); updateUI();
+    player.hp = Math.max(0, player.hp - mitigated); 
+    showFloatingText(mitigated, 'damage', true);
+    updateUI();
+    
     await appendLogAsync(`🩸 <span class="combat-damage">${mitigated}</span>의 피해를 입었습니다! (남은 HP: ${player.hp}/${getMaxHp()})`, 'combat', 'enemy');
     
     if (mitigated > 0 && currentEnemy.mType && currentEnemy.mType !== 'normal') {
@@ -1517,7 +1598,9 @@ async function applyTurnEndRegen() {
     if (isRift) hpRegenRate /= 2; if (isBloodCurse) hpRegenRate /= 2;
     if (hpRegenRate > 0) {
         let hpHealed = Math.max(1, Math.floor(getMaxHp() * (hpRegenRate / 100)));
-        player.hp = Math.min(getMaxHp(), player.hp + hpHealed); regenLog.push(`체력 ${hpHealed}`);
+        player.hp = Math.min(getMaxHp(), player.hp + hpHealed); 
+        showFloatingText(hpHealed, 'heal', true);
+        regenLog.push(`체력 ${hpHealed}`);
     }
     
     let mpRegenRate = getAccessoryEffect('mpRegen');
@@ -1742,6 +1825,7 @@ async function useItem(idx) {
                 healAmount = Math.floor(maxHp * item.ratio);
                 if (isRift && currentRiftDebuff === '피의 저주') healAmount = Math.floor(healAmount / 2);
                 player.hp = Math.min(maxHp, player.hp + healAmount); 
+                showFloatingText(healAmount, 'heal', true);
             } else { 
                 healAmount = Math.floor(maxMp * item.ratio); player.mp = Math.min(maxMp, player.mp + healAmount); 
             }
@@ -2362,7 +2446,11 @@ function exploreForward() {
     dungeonDepth++; checkSubQuestProgress('explore');
     let hpRegenRate = getAccessoryEffect('hpRegen') + getSigilBonus('hpRegen');
     if (player.talents && player.talents.defense >= 3) hpRegenRate += 2;
-    if (hpRegenRate > 0) player.hp = Math.min(getMaxHp(), player.hp + Math.max(1, Math.floor(getMaxHp() * (hpRegenRate / 100))));
+    if (hpRegenRate > 0) {
+        let hHeal = Math.max(1, Math.floor(getMaxHp() * (hpRegenRate / 100)));
+        player.hp = Math.min(getMaxHp(), player.hp + hHeal);
+        showFloatingText(hHeal, 'heal', true);
+    }
     
     let mpRegenRate = getAccessoryEffect('mpRegen');
     if (mpRegenRate > 0) player.mp = Math.min(getMaxMp(), player.mp + Math.max(1, Math.floor(getMaxMp() * (mpRegenRate / 100))));
@@ -2377,11 +2465,11 @@ function triggerForkNode() {
 }
 function resolveFork(choice) {
     if (choice === 'safe') { let gold = 20 * (currentChapterIdx + 1); player.gold += gold; logNarrative(`안전한 길을 돌아 나오며 ${gold} G 발견.`, "reward", "system"); } 
-    else { if (Math.random() < 0.5) { triggerCombat(true); return; } else { let heal = Math.floor(getMaxHp() * 0.25); player.hp = Math.min(getMaxHp(), player.hp + heal); logNarrative(`험난한 길 끝 은밀한 샘에서 체력 ${heal} 회복.`, "reward", "system"); } }
+    else { if (Math.random() < 0.5) { triggerCombat(true); return; } else { let heal = Math.floor(getMaxHp() * 0.25); player.hp = Math.min(getMaxHp(), player.hp + heal); showFloatingText(heal, 'heal', true); logNarrative(`험난한 길 끝 은밀한 샘에서 체력 ${heal} 회복.`, "reward", "system"); } }
     promptNextExploration(); updateUI();
 }
-function triggerRestNode() { let heal = Math.floor(getMaxHp() * 0.3); player.hp = Math.min(getMaxHp(), player.hp + heal); logNarrative(`잠시 숨을 고르며 상처 보살핌. 체력 ${heal} 회복.`, "reward", "system"); promptNextExploration(); }
-function triggerTrapNode() { let dmg = Math.floor(getMaxHp() * 0.12); player.hp = Math.max(1, player.hp - dmg); logNarrative(`⚠️ 맹독 덫을 밟아 ${dmg} 피해!`, "combat", "system"); promptNextExploration(); }
+function triggerRestNode() { let heal = Math.floor(getMaxHp() * 0.3); player.hp = Math.min(getMaxHp(), player.hp + heal); showFloatingText(heal, 'heal', true); logNarrative(`잠시 숨을 고르며 상처 보살핌. 체력 ${heal} 회복.`, "reward", "system"); promptNextExploration(); }
+function triggerTrapNode() { let dmg = Math.floor(getMaxHp() * 0.12); player.hp = Math.max(1, player.hp - dmg); showFloatingText(dmg, 'damage', true); logNarrative(`⚠️ 맹독 덫을 밟아 ${dmg} 피해!`, "combat", "system"); promptNextExploration(); }
 
 function triggerCombat(isElite) {
     gameState = "COMBAT"; combatTurnCount = 0; let ch = CHAPTERS[currentChapterIdx];
