@@ -705,6 +705,22 @@ function applyLoadedData(saveData) {
     if(player.enhanceFailStack === undefined) player.enhanceFailStack = 0;
     if(player.highestRiftFloor === undefined) player.highestRiftFloor = saveData.riftFloor || 1;
 
+    // =========================================================
+    // [신규 추가] 기존 유저 스탯 소급 지급 패치 (로그인 시 1회만 적용)
+    // =========================================================
+    if (!player.statUpdatedToV2) {
+        if (player.level > 1) {
+            let compensation = (player.level - 1) * 1; 
+            player.statPoints += compensation;
+            
+            setTimeout(() => {
+                alert(`[시스템 패치] 레벨업 스탯 증가 패치로 인해 ${compensation} 스탯 포인트가 소급 지급되었습니다!`);
+            }, 500);
+        }
+        player.statUpdatedToV2 = true; 
+    }
+    // =========================================================
+
     const patchGear = (g) => {
         if (!g || g.type !== 'gear') return;
         let enh = g.enhance || 0; if (g.isLocked === undefined) g.isLocked = false;
@@ -2004,9 +2020,9 @@ function triggerBossCombat() {
 function checkLevelUp() {
     let leveledUp = false;
     while (player.exp >= player.maxExp) {
-        player.exp -= player.maxExp; player.level++; player.statPoints += 3;
+        player.exp -= player.maxExp; player.level++; player.statPoints += 5;
         player.maxExp = Math.floor(player.maxExp * 1.35); leveledUp = true;
-        logNarrative(`🎉 레벨 업! Lv.${player.level} 달성! (스탯 포인트 +3)`, "reward", "system");
+        logNarrative(`🎉 레벨 업! Lv.${player.level} 달성! (스탯 포인트 +5)`, "reward", "system");
     }
     if (leveledUp) { player.hp = getMaxHp(); player.mp = getMaxMp(); updateUI(); }
 }
