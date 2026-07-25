@@ -708,7 +708,27 @@ function applyLoadedData(saveData) {
     if(player.highestRiftFloor === undefined) player.highestRiftFloor = saveData.riftFloor || 1;
     if(player.tp === undefined) player.tp = 0;
     if(!player.talents) player.talents = { offense: 0, defense: 0, chaos: 0 };
+    // =========================================================
+    // [신규 추가] 기존 유저 TP(특성 포인트) 소급 지급 패치 (단 1회만 적용)
+    // =========================================================
+    if (!player.tpUpdated) {
+        // 레벨 5부터 2레벨마다 1포인트 지급 공식
+        let expectedTotalTp = Math.max(0, Math.floor((player.level - 3) / 2));
+        // 이미 사용한 TP가 있다면 빼줌 (오류 방지)
+        let spentTp = player.talents.offense + player.talents.defense + player.talents.chaos;
+        let compensation = expectedTotalTp - spentTp;
 
+        if (compensation > 0) {
+            player.tp += compensation;
+            // UI가 다 로드된 후 팝업을 띄우기 위해 약간의 지연(딜레이)을 줌
+            setTimeout(() => {
+                alert(`[시스템 업데이트] 영혼 각인소(특성) 시스템 추가 기념!\n기존 달성하신 레벨(Lv.${player.level})에 맞추어 특성 포인트(TP) ${compensation}개가 소급 지급되었습니다.`);
+            }, 800);
+        }
+        // 패치를 받았다는 기록을 남겨 다음 로그인부터는 중복 지급되지 않게 함
+        player.tpUpdated = true; 
+    }
+    // =========================================================
     const patchGear = (g) => {
         if (!g || g.type !== 'gear') return;
         let enh = g.enhance || 0; if (g.isLocked === undefined) g.isLocked = false;
