@@ -82,10 +82,11 @@
         #center-display::before { content: ''; position: absolute; top:0; left:0; right:0; bottom:0; box-shadow: inset 0 0 80px rgba(0,0,0,1); pointer-events: none; z-index: 1; }
         
         .narrative-box { flex: 1; background: rgba(8, 6, 5, 0.85); border: 1px solid var(--border-aged); border-radius: 4px; padding: 25px; overflow-y: auto; font-size: 15px; line-height: 1.9; color: #d1c29e; box-shadow: inset 0 0 30px rgba(0,0,0,1); scroll-behavior: smooth; position: relative; z-index: 2; }
-        .narrative-box p { margin: 0 0 10px 0; text-shadow: 1px 1px 1px #000; padding: 6px 10px; border-radius: 3px; }
+        .narrative-box p { margin: 0 0 8px 0; text-shadow: 1px 1px 1px #000; padding: 6px 10px; border-radius: 3px; }
         .log-box-player { background: rgba(42, 60, 78, 0.4); border-left: 3px solid var(--accent-blue); }
         .log-box-enemy { background: rgba(78, 42, 42, 0.4); border-left: 3px solid var(--accent-red); }
         .log-box-system { background: rgba(20, 20, 20, 0.6); border-left: 3px solid var(--border-aged); }
+        .combat-turn-divider { text-align: center; color: var(--accent-gold); font-size: 12px; margin: 12px 0 8px 0; border-top: 1px dashed var(--border-aged); padding-top: 6px; font-weight: bold; letter-spacing: 1px; }
         .log-combat, .combat-damage { color: #e86868; font-weight: 700; }
         .log-system { color: #7abfe8; }
         .log-reward, .victory { color: #a4e87a; font-weight: 700; text-shadow: 0 0 5px rgba(164,232,122,0.3); }
@@ -124,94 +125,47 @@
         .grade-전설 { color: #ffdb4d; border-color: #e5b840; background: rgba(43, 36, 18, 0.6); text-shadow: 0 0 8px rgba(255,219,77,0.5); }
         .grade-균열 { color: #ff77ff; border-color: #aa22aa; background: rgba(60, 10, 60, 0.6); text-shadow: 0 0 8px rgba(255,119,255,0.6); }
 
-/* 모바일 및 태블릿 최적화 */
-        @media screen and (max-width: 1024px) {
-            body { 
-                align-items: flex-start; 
-                min-height: 100vh; 
-                padding: 0; 
-                overflow-y: auto; /* 전체 바디 스크롤 활성화 */
-            }
-
-            #game-wrapper { 
-                width: 100vw; 
-                height: auto; 
-                min-height: 100dvh; 
-                display: flex; 
-                flex-direction: column; 
-                border: none; 
-                border-radius: 0; 
-                overflow-y: visible;
-                box-shadow: none;
-            }
-
-            /* 상단 메뉴 고정 */
-            header { 
-                position: sticky; 
-                top: 0; 
-                z-index: 100; 
-                padding: 10px; 
-                min-height: 55px; 
-                flex-shrink: 0;
-            }
-            .game-title { display: none; }
-            .header-menu { gap: 6px; }
-
-            .panel { 
-                display: flex; 
-                width: 100%; 
-                border: none; 
-                border-bottom: 2px solid #14110f; 
-                padding: 15px; 
-                height: auto;
-                max-height: none; 
-                overflow-y: visible;
-                flex-shrink: 0;
-            }
-            .panel:last-child { 
-                border-bottom: none; 
-                border-top: 2px solid #14110f; 
-            }
-
-            /* 💡 문제 해결 핵심 파트: 중앙 영역 및 로그창 수정 */
-            #center-display { 
-                width: 100%; 
-                flex: none; /* 내용물만큼 자연스럽게 길이가 늘어나도록 변경 */
-                padding: 15px; 
-                gap: 12px; 
-                overflow-y: visible; /* PC버전의 hidden 속성을 덮어씌워 잘림 방지 */
-            }
-            .narrative-box { 
-                flex: none; /* 로그창이 버튼 공간을 밀어내지 못하게 해제 */
-                height: 250px; /* 모바일용 로그창 고정 높이 (내부 스크롤 유지) */
-                font-size: 14px; 
-            }
-
-            .action-container { 
-                grid-template-columns: 1fr 1fr; 
-                gap: 8px; 
-                min-height: auto; 
-            }
-            .btn-choice { padding: 12px; font-size: 13px; }
-
-            .modal-box { width: 95vw; padding: 15px; max-height: 85vh; }
-            .modal-box h2 { font-size: 18px; }
-            .inventory-grid { 
-                grid-template-columns: repeat(4, 1fr); 
-                gap: 6px; 
-                max-height: 40vh; 
-            }
-
-            .intro-box { width: 95vw; padding: 25px 15px; }
-            .intro-box h1 { font-size: 22px; margin-top: 20px; }
-            .intro-input { width: 90%; font-size: 14px; padding: 12px; }
+        /* 영혼 각인(특성) 툴팁 및 UI 스타일 */
+        .talent-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px; }
+        .talent-col { display: flex; flex-direction: column; gap: 10px; background: rgba(15, 12, 10, 0.6); padding: 10px; border: 1px solid var(--border-aged); border-radius: 4px; }
+        .talent-col-title { text-align: center; font-weight: bold; font-size: 15px; padding-bottom: 8px; border-bottom: 1px dashed var(--border-aged); margin-bottom: 5px; }
+        
+        .talent-tooltip { position: relative; display: flex; justify-content: center; }
+        .talent-btn { 
+            width: 100%; padding: 12px 5px; background: var(--btn-bg); border: 1px solid var(--border-aged); 
+            color: var(--text-muted); border-radius: 4px; font-family: 'Noto Serif KR', serif; 
+            font-size: 13px; font-weight: bold; cursor: pointer; transition: all 0.3s ease; text-align: center;
         }
+        
+        .talent-btn.unlocked { border-color: var(--accent-gold); color: #fff; box-shadow: inset 0 0 10px rgba(212,175,55,0.3); background: linear-gradient(to bottom, #3b3129, #181411); }
+        .talent-btn.learnable { border-color: var(--accent-green); color: var(--accent-green); animation: pulse-green 1.5s infinite; }
+        @keyframes pulse-green { 0% { box-shadow: 0 0 5px var(--accent-green); } 50% { box-shadow: 0 0 15px var(--accent-green); } 100% { box-shadow: 0 0 5px var(--accent-green); } }
+        
+        .talent-tooltip .tooltiptext {
+            visibility: hidden; width: 200px; background-color: #0a0807; color: var(--text-main);
+            text-align: center; border-radius: 6px; padding: 12px; border: 1px solid var(--accent-gold);
+            position: absolute; z-index: 2000; bottom: 110%; left: 50%; margin-left: -100px;
+            opacity: 0; transition: opacity 0.3s; font-size: 12px; font-weight: normal; line-height: 1.5;
+            box-shadow: 0 5px 15px rgba(0,0,0,1); pointer-events: none;
+        }
+        .talent-tooltip .tooltiptext::after {
+            content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px;
+            border-width: 5px; border-style: solid; border-color: var(--accent-gold) transparent transparent transparent;
+        }
+        .talent-tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
 
-        /* 좁은 스마트폰 화면을 위한 추가 최적화 */
+        @media screen and (max-width: 1024px) {
+            body { align-items: flex-start; min-height: 100vh; padding: 0; }
+            #game-wrapper { width: 100vw; height: 100vh; height: 100dvh; grid-template-columns: 1fr; grid-template-rows: 50px 1fr; border: none; border-radius: 0; }
+            .panel { display: none; }
+            #center-display { grid-column: 1 / -1; padding: 10px; gap: 10px; }
+            header { padding: 0 10px; }
+            .game-title { font-size: 14px; letter-spacing: 2px; }
+            .action-container { grid-template-columns: 1fr; }
+            .btn-choice { padding: 10px 14px; font-size: 13.5px; }
+        }
         @media screen and (max-width: 600px) {
-            .action-container { grid-template-columns: 1fr; } /* 모든 행동 버튼을 세로 1열로 큼직하게 배치 */
-            header .btn-mini { font-size: 11px; padding: 6px 8px; }
-            .inventory-grid { grid-template-columns: repeat(4, 1fr); }
+            .talent-grid { grid-template-columns: 1fr; } 
         }
     </style>
 </head>
@@ -347,6 +301,7 @@ const db = getFirestore(app);
 let currentUserId = null;
 let chatMessages = [];
 let chatUnsubscribe = null;
+let combatTurnCount = 0; 
 
 const i18n_intro = {
     ko: { title: "《에르가스트룸: 왕국의 맹세》", desc: "나만의 아이디와 비밀번호로 로그인하여 어느 컴퓨터에서나 모험을 이어가세요.", placeholderId: "사용할 아이디 (예: hero123)", placeholderPw: "비밀번호", startBtn: "계정 생성 / 로그인" },
@@ -487,6 +442,52 @@ const SIGIL_OPTIONS = [
     { type: 'mpCostDec', label: '기민한 흐름', desc: '스킬 사용 시 MP 소모량 15% 감소', val: 0.15 }
 ];
 
+const TALENT_DATA = {
+    offense: {
+        name: "학살의 길 (무력)", color: "var(--accent-red)",
+        nodes: [
+            { tier: 1, name: "치명적인 일격", desc: "치명타 확률이 5% 증가합니다." },
+            { tier: 2, name: "피의 굶주림", desc: "공격 시 흡혈량이 5% 증가합니다." },
+            { tier: 3, name: "약점 포착", desc: "치명타 피해량이 20% 증가합니다." },
+            { tier: 4, name: "처형인", desc: "체력이 30% 이하인 적에게 주는 피해가 30% 증폭됩니다." }
+        ]
+    },
+    defense: {
+        name: "철벽의 길 (생존)", color: "var(--accent-blue)",
+        nodes: [
+            { tier: 1, name: "강인한 육체", desc: "최대 체력이 15% 증가합니다." },
+            { tier: 2, name: "견고한 가죽", desc: "방어력이 20% 증가합니다." },
+            { tier: 3, name: "재생력", desc: "턴 종료 시 최대 체력의 2%를 자동 회복합니다." },
+            { tier: 4, name: "불굴의 영혼", desc: "적에게 받는 모든 피해가 10% 감소합니다." }
+        ]
+    },
+    chaos: {
+        name: "혼돈의 길 (유틸)", color: "#c485e0",
+        nodes: [
+            { tier: 1, name: "마력 집중", desc: "스킬 사용 시 MP 소모량이 15% 감소합니다." },
+            { tier: 2, name: "기민함", desc: "회피율이 5% 증가합니다." },
+            { tier: 3, name: "탐욕", desc: "전투 승리 시 얻는 골드량이 20% 증가합니다." },
+            { tier: 4, name: "마력 폭주", desc: "스킬 사용 시 15% 확률로 MP를 소모하지 않습니다." }
+        ]
+    }
+};
+
+let player = {
+    name: "모험가", job: "방랑자", tier: 0, level: 1, exp: 0, maxExp: 100, hp: 100, mp: 50,
+    str: 5, dex: 5, int: 5, con: 5, statPoints: 5, gold: 150, honor: 0,
+    relics: [], relicStorage: [], inventory: [], activeQuests: [], availableBulletinQuests: [],
+    equipment: { 머리: null, 상의: null, 바지: null, 신발: null, 장갑: null, 주무기: null, 보조무기: null, 목걸이: null, 반지1: null, 반지2: null },
+    altarLevel: { atk: 0, def: 0, hp: 0, matk: 0, crit: 0, str: 0, dex: 0, int: 0, con: 0 },
+    unlockedUltimate: false, ultimateCooldown: 0, enhanceFailStack: 0, accountPassword: "", highestRiftFloor: 1,
+    tp: 0, talents: { offense: 0, defense: 0, chaos: 0 }
+};
+
+let gameState = "HUB", unlockedChapter = 1, currentChapterIdx = 0, questCleared = new Array(10).fill(false), dungeonDepth = 0, currentEnemy = null;
+let selectedInvIdx = null, currentInvTab = 'all', pendingRelic = null;
+let currentTypewriter = null; 
+let isRift = false, riftFloor = 1, currentRiftDebuff = null;
+let combatTextDelay = 150, isProcessingTurn = false;
+
 function getRelicBonus(type) {
     let total = 0; player.relics.forEach(r => { if (r.type === type) total += r.percent; }); return total;
 }
@@ -517,7 +518,9 @@ function getFinalCon() {
 
 function getMaxHp() {
     let altarBonus = player.altarLevel ? (player.altarLevel.hp || 0) * 15 : 0;
-    return 75 + (getFinalCon() * 5) + altarBonus + ((player.level - 1) * 15);
+    let base = 75 + (getFinalCon() * 5) + altarBonus + ((player.level - 1) * 15);
+    if (player.talents && player.talents.defense >= 1) base = Math.floor(base * 1.15);
+    return base;
 }
 function getMaxMp() {
     let mpBonus = 0; EQUIPMENT_SLOTS.forEach(s => { let eq = player.equipment[s]; if (eq && eq.options) eq.options.forEach(o => { if (o.type === 'mp') mpBonus += o.val; }); });
@@ -528,6 +531,7 @@ function getPlayerDef() {
     let altarBonus = player.altarLevel ? (player.altarLevel.def || 0) * 1 : 0;
     let base = getFinalCon() + altarBonus + Math.floor((player.level - 1) * 1.5);
     EQUIPMENT_SLOTS.forEach(s => { let eq = player.equipment[s]; if (eq && eq.def) base += eq.def; });
+    if (player.talents && player.talents.defense >= 2) base = Math.floor(base * 1.20);
     return base;
 }
 
@@ -558,12 +562,15 @@ function getPlayerMatk() {
 function getPlayerCrit() {
     let altarBonus = player.altarLevel ? (player.altarLevel.crit || 0) * 0.5 : 0;
     let gearCrit = 0; EQUIPMENT_SLOTS.forEach(s => { let eq = player.equipment[s]; if (eq && eq.options) eq.options.forEach(o => { if (o.type === 'crit') gearCrit += o.val; }); });
-    return Math.min(85, 5 + Math.floor(getFinalDex() * 0.8) + altarBonus + gearCrit);
+    let base = 5 + Math.floor(getFinalDex() * 0.8) + altarBonus + gearCrit;
+    if (player.talents && player.talents.offense >= 1) base += 5;
+    return Math.min(85, base);
 }
 function getPlayerEvade() {
     let base = 5 + Math.floor(getFinalDex() * 0.4);
     if (['도적','암살자','의적'].includes(player.job) && player.tier >= 1) base += 8;
     if (isRift && currentRiftDebuff === '중력 왜곡') base -= 15;
+    if (player.talents && player.talents.chaos >= 2) base += 5;
     return Math.min(50, Math.max(0, base));
 }
 function getPlayerAcc() {
@@ -575,6 +582,7 @@ function getPlayerCritDmg() {
     let base = 150 + Math.floor(getFinalStr() * 0.2);
     if (player.job === '암살자') base += 30; 
     base += getSigilBonus('critDmg'); 
+    if (player.talents && player.talents.offense >= 3) base += 20;
     return base;
 }
 function getAccessoryEffect(effectType) {
@@ -608,58 +616,6 @@ const JOB_SKILLS = {
     "의적": { name: "연막 환영참", cost: 18, type: "physical", icon: "ra-fast-backward-goggles", calcDamage: (p, enemy) => { return { base: getPlayerAtk() * 1.7 + getFinalDex() * 2.5 + getFinalInt() * 1.5, isMagic: false }; } }
 };
 
-const EQUIPMENT_SLOTS = ["머리", "상의", "바지", "신발", "장갑", "주무기", "보조무기", "목걸이", "반지1", "반지2"];
-const EQUIPMENT_GRADES = ["일반", "정예", "희귀", "영웅", "전설", "균열"];
-const GEAR_TYPES = {
-    "물리무기": ["롱소드", "전투 도끼", "강철 창", "기사단 대검", "그림자 단검", "전투 망치"],
-    "마법무기": ["참나무 지팡이", "마도의 루비 완드", "성스러운 성물", "기묘한 마도서", "정령의 오브"],
-    "방어구": ["사슬 투구", "가죽 두건", "판금 갑옷", "사슬 갑옷", "판금 각반", "철장화", "가죽 장갑"],
-    "목걸이": ["구리 목걸이", "루비 목걸이", "영원의 펜던트", "미다스의 황금 목걸이"],
-    "반지": ["구리 반지", "은반지", "흡혈귀의 피빛 반지", "태초의 마나 반지"]
-};
-const HIT_FLAVORS = {
-    glance: ["검날이 상대의 단단한 비늘(갑옷)을 아슬아슬하게 스쳤다. 타격이 다소 깊지 못했다.", "적의 반사적인 회피 동작에 허를 찔렸다. 중심이 무너지며 위력이 반감되었다."],
-    normal: ["정확한 각도로 적의 급소를 향해 묵직한 충격을 밀어 넣었다.", "방어의 허를 파고든 정직한 일격이 상대의 육체에 깊은 타상을 남겼다."],
-    critical: ["상대의 움직임이 멈춘 찰나의 순간, 방어의 공백을 완벽하게 관통하는 예리한 일격이 터졌다!", "예측을 불허하는 각도에서 날아간 공격이 적의 치명적인 약점을 정확히 후벼팠다!"],
-    critExecute: ["뇌전이 치듯 순식간에 시야가 번쩍였다! 적의 갑옷이 박살 나며 시야를 붉게 물들인다!", "뼈와 살을 파고드는 끔찍한 충격! 완벽하고 잔혹한 급소 강타가 작렬했다!"]
-};
-function getRandomFlavor(type) { let arr = HIT_FLAVORS[type]; return arr[Math.floor(Math.random() * arr.length)]; }
-
-function calculateCombatDamage(rawBaseDmg, isMagic, enemy, forceCrit = false, forceIgnoreRate = 0) {
-    let dex = getFinalDex(), roll = Math.random() * 100;
-    let glanceChance = Math.max(5, 20 - Math.floor(dex * 0.4)), critChance = 100 - Math.max(10, 15 + Math.floor(dex * 0.5));
-    let tier = "normal", mult = 1.0;
-    if (!forceCrit && roll < glanceChance) { tier = "glance"; mult = 0.8; } else if (forceCrit || roll >= critChance) { tier = "critical"; mult = 1.25; }
-
-    let adjustedBase = rawBaseDmg * mult;
-    let enemyDef = isMagic ? (enemy.mres || 0) * 0.4 : (enemy.def || 0) * 0.5;
-    if (isRift && currentRiftDebuff === '칠흑의 장갑') enemyDef *= 1.4;
-    
-    let finalIgnoreRate = forceIgnoreRate + getSigilBonus('ignoreDef');
-    if (finalIgnoreRate > 0) enemyDef = enemyDef * Math.max(0, (1 - finalIgnoreRate));
-    
-    let finalDmg = Math.max(1, Math.floor(adjustedBase - enemyDef));
-    let isCrit = forceCrit || (Math.random() * 100 < getPlayerCrit());
-    if (isCrit) finalDmg = Math.floor(finalDmg * (getPlayerCritDmg() / 100));
-
-    return { dmg: finalDmg, tier: tier, flavorText: getRandomFlavor(tier), isCrit: isCrit, critText: isCrit ? getRandomFlavor("critExecute") : null };
-}
-
-let player = {
-    name: "모험가", job: "방랑자", tier: 0, level: 1, exp: 0, maxExp: 100, hp: 100, mp: 50,
-    str: 5, dex: 5, int: 5, con: 5, statPoints: 5, gold: 150, honor: 0,
-    relics: [], relicStorage: [], inventory: [], activeQuests: [], availableBulletinQuests: [],
-    equipment: { 머리: null, 상의: null, 바지: null, 신발: null, 장갑: null, 주무기: null, 보조무기: null, 목걸이: null, 반지1: null, 반지2: null },
-    altarLevel: { atk: 0, def: 0, hp: 0, matk: 0, crit: 0, str: 0, dex: 0, int: 0, con: 0 },
-    unlockedUltimate: false, ultimateCooldown: 0, enhanceFailStack: 0, accountPassword: "", highestRiftFloor: 1
-};
-
-let gameState = "HUB", unlockedChapter = 1, currentChapterIdx = 0, questCleared = new Array(10).fill(false), dungeonDepth = 0, currentEnemy = null;
-let selectedInvIdx = null, currentInvTab = 'all', pendingRelic = null;
-let currentTypewriter = null; 
-let isRift = false, riftFloor = 1, currentRiftDebuff = null;
-let combatTextDelay = 150, isProcessingTurn = false;
-
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 function scrollToBottom() { const logBox = document.getElementById('narrative-log'); if (logBox) logBox.scrollTop = logBox.scrollHeight; }
 function logNarrative(html, type = "normal", boxType = "system") {
@@ -684,6 +640,30 @@ function addItemToInventory(item) {
 function showModal(html) { const overlay = document.getElementById("modal-overlay"); const content = document.getElementById("modal-content"); content.innerHTML = html; overlay.classList.remove("hidden"); }
 function closeModal() { if (currentTypewriter) { clearInterval(currentTypewriter); currentTypewriter = null; } document.getElementById("modal-overlay").classList.add("hidden"); selectedInvIdx = null; pendingRelic = null; }
 
+function calculateCombatDamage(rawBaseDmg, isMagic, enemy, forceCrit = false, forceIgnoreRate = 0) {
+    let dex = getFinalDex(), roll = Math.random() * 100;
+    let glanceChance = Math.max(5, 20 - Math.floor(dex * 0.4)), critChance = 100 - Math.max(10, 15 + Math.floor(dex * 0.5));
+    let tier = "normal", mult = 1.0;
+    if (!forceCrit && roll < glanceChance) { tier = "glance"; mult = 0.8; } else if (forceCrit || roll >= critChance) { tier = "critical"; mult = 1.25; }
+
+    let adjustedBase = rawBaseDmg * mult;
+    let enemyDef = isMagic ? (enemy.mres || 0) * 0.4 : (enemy.def || 0) * 0.5;
+    if (isRift && currentRiftDebuff === '칠흑의 장갑') enemyDef *= 1.4;
+    
+    let finalIgnoreRate = forceIgnoreRate + getSigilBonus('ignoreDef');
+    if (finalIgnoreRate > 0) enemyDef = enemyDef * Math.max(0, (1 - finalIgnoreRate));
+    
+    let finalDmg = Math.max(1, Math.floor(adjustedBase - enemyDef));
+    let isCrit = forceCrit || (Math.random() * 100 < getPlayerCrit());
+    if (isCrit) finalDmg = Math.floor(finalDmg * (getPlayerCritDmg() / 100));
+
+    if (player.talents && player.talents.offense >= 4 && enemy && (enemy.hp / enemy.maxHp) <= 0.3) {
+        finalDmg = Math.floor(finalDmg * 1.30);
+    }
+
+    return { dmg: finalDmg, tier: tier, flavorText: getRandomFlavor(tier), isCrit: isCrit, critText: isCrit ? getRandomFlavor("critExecute") : null };
+}
+
 async function autoSave() {
     if (!currentUserId) return;
     const saveData = { player, gameState, unlockedChapter, currentChapterIdx, questCleared, dungeonDepth, currentEnemy, isRift, riftFloor };
@@ -707,22 +687,8 @@ function applyLoadedData(saveData) {
     if(player.ultimateCooldown === undefined) player.ultimateCooldown = 0;
     if(player.enhanceFailStack === undefined) player.enhanceFailStack = 0;
     if(player.highestRiftFloor === undefined) player.highestRiftFloor = saveData.riftFloor || 1;
-
-    // =========================================================
-    // [신규 추가] 기존 유저 스탯 소급 지급 패치 (로그인 시 1회만 적용)
-    // =========================================================
-    if (!player.statUpdatedToV2) {
-        if (player.level > 1) {
-            let compensation = (player.level - 1) * 2; 
-            player.statPoints += compensation;
-            
-            setTimeout(() => {
-                alert(`[시스템 패치] 레벨업 스탯 증가 패치로 인해 ${compensation} 스탯 포인트가 소급 지급되었습니다!`);
-            }, 500);
-        }
-        player.statUpdatedToV2 = true; 
-    }
-    // =========================================================
+    if(player.tp === undefined) player.tp = 0;
+    if(!player.talents) player.talents = { offense: 0, defense: 0, chaos: 0 };
 
     const patchGear = (g) => {
         if (!g || g.type !== 'gear') return;
@@ -784,6 +750,17 @@ function updateUI() {
         passiveHtml += `<div style="margin-bottom:6px;"><strong style="color:var(--accent-gold);">[${p1.name}]</strong><br>${p1.desc}</div>`;
         if (player.tier >= 2) { let p2 = PASSIVE_SKILLS[player.job]; if(p2) passiveHtml += `<div><strong style="color:var(--accent-gold);">[${p2.name}]</strong><br>${p2.desc}</div>`; }
     } else { passiveHtml = "전직 후 개방됩니다."; }
+
+    if (player.talents) {
+        let tList = [];
+        if (player.talents.offense >= 1) tList.push(`무력 T${player.talents.offense}`);
+        if (player.talents.defense >= 1) tList.push(`철벽 T${player.talents.defense}`);
+        if (player.talents.chaos >= 1) tList.push(`혼돈 T${player.talents.chaos}`);
+        if (tList.length > 0) {
+            passiveHtml += `<div style="margin-top:8px; padding-top:6px; border-top:1px dashed var(--border-aged);"><strong style="color:var(--accent-gold);"><i class="ra ra-genie"></i> 영혼 각인:</strong> ${tList.join(', ')}</div>`;
+        }
+    }
+
     document.getElementById("ui-passives").innerHTML = passiveHtml;
 
     let accHtml = "";
@@ -852,6 +829,7 @@ function updateUI() {
         `;
     } else { enemyInfoEl.innerHTML = `<p style="font-size:12px; color:var(--text-muted); margin-top:30px; text-align:center;">현재 교전 중인 적이 없습니다.</p>`; }
 }
+
 function enterHub() {
     gameState = "HUB"; currentEnemy = null; isRift = false; currentRiftDebuff = null;
     isProcessingTurn = false; 
@@ -868,9 +846,71 @@ function enterHub() {
         <button class="btn-choice" onclick="game.openBulletinBoard()"><i class="ra ra-scroll-unfurled"></i> 의뢰 게시판</button>
         <button class="btn-choice" onclick="game.openQuestModal()"><i class="ra ra-tower"></i> 메인 임무 보고</button>
         <button class="btn-choice full-width" style="text-align:center; justify-content:center;" onclick="game.selectChapterModal()"><i class="ra ra-compass"></i> 다른 챕터 선택 및 이동</button>
+        <button class="btn-choice full-width" style="border-color:var(--accent-gold); background:linear-gradient(to bottom, #3b2c15, #1a1305); justify-content:center;" onclick="game.openTalentModal()"><i class="ra ra-genie"></i> 영혼 각인소 (특성 패시브)</button>
         ${riftBtn}
     `;
     updateUI(); autoSave();
+}
+
+function openTalentModal() {
+    if (!player.talents) player.talents = { offense: 0, defense: 0, chaos: 0 };
+    if (player.tp === undefined) player.tp = 0;
+
+    let html = `<h2>영혼 각인소 (특성)</h2>
+                <p style="font-size:13px; color:var(--text-muted); margin-bottom:15px;">레벨 5부터 2레벨마다 특성 포인트를 얻어 캐릭터를 강화합니다.<br>보유 특성 포인트 (TP): <strong style="color:var(--accent-green); font-size:16px;">${player.tp}</strong></p>
+                <div class="talent-grid">`;
+
+    ['offense', 'defense', 'chaos'].forEach(branch => {
+        let bData = TALENT_DATA[branch];
+        let currentTier = player.talents[branch];
+        
+        html += `<div class="talent-col">
+                    <div class="talent-col-title" style="color:${bData.color};">${bData.name}</div>`;
+        
+        bData.nodes.forEach(node => {
+            let statusClass = "locked";
+            let btnText = "잠김";
+            let onClick = "";
+
+            if (currentTier >= node.tier) {
+                statusClass = "unlocked"; btnText = "각인 완료";
+            } else if (currentTier === node.tier - 1) {
+                if (player.tp > 0) {
+                    statusClass = "learnable"; btnText = "각인 가능 (TP 1)";
+                    onClick = `onclick="game.learnTalent('${branch}', ${node.tier})"`;
+                } else {
+                    btnText = "TP 부족";
+                }
+            }
+
+            html += `<div class="talent-tooltip">
+                        <button class="talent-btn ${statusClass}" ${onClick}>
+                            [T${node.tier}] ${node.name}<br>
+                            <span style="font-size:11px; font-weight:normal;">${btnText}</span>
+                        </button>
+                        <span class="tooltiptext"><strong style="color:var(--accent-gold);">${node.name}</strong><br><br>${node.desc}</span>
+                     </div>`;
+        });
+        html += `</div>`;
+    });
+
+    html += `</div><button class="btn-choice full-width" style="text-align:center; justify-content:center; margin-top:20px;" onclick="game.closeModal()">닫기</button>`;
+    showModal(html);
+}
+
+function learnTalent(branch, tier) {
+    if (player.tp <= 0) return;
+    if (player.talents[branch] !== tier - 1) return;
+
+    player.tp--;
+    player.talents[branch] = tier;
+    
+    player.hp = Math.min(player.hp, getMaxHp());
+    
+    logNarrative(`🌟 영혼에 새로운 각인을 새겼습니다! [${TALENT_DATA[branch].nodes[tier-1].name}]`, "reward", "system");
+    openTalentModal();
+    updateUI();
+    autoSave();
 }
 
 function openRiftMenu() {
@@ -943,6 +983,7 @@ function promptNextRiftExploration() {
 
 function triggerRiftCombat(isBoss) {
     gameState = "COMBAT";
+    combatTurnCount = 0;
     let N = riftFloor;
     let hp = Math.floor(50000 + (N * 4000) * Math.pow(1.04, N));
     let atk = Math.floor(800 + (N * 120) * Math.pow(1.02, N));
@@ -999,11 +1040,21 @@ async function playerAttack() {
     if (isProcessingTurn || gameState !== 'COMBAT' || !currentEnemy) return;
     isProcessingTurn = true; setCombatButtonsDisabled(true);
     try {
+        combatTurnCount++;
+        const box = document.getElementById("narrative-log");
+        const divider = document.createElement("div");
+        divider.className = "combat-turn-divider";
+        divider.innerText = `[ 전투 턴 #${combatTurnCount} ]`;
+        box.appendChild(divider);
+        scrollToBottom();
+
         triggerEnemyPanelShake(); 
         await appendLogAsync(`🗡️ ${player.name}의 기본 공격!`, 'system', 'player');
         
         let combatRes = calculateCombatDamage(getPlayerAtk(), false, currentEnemy);
         let vampRate = getAccessoryEffect('vampire') + getSigilBonus('vampire');
+        if (player.talents && player.talents.offense >= 2) vampRate += 5; // 학살 2티어
+        
         if (isRift) vampRate /= 2;
         if (isRift && currentRiftDebuff === '피의 저주') vampRate /= 2;
 
@@ -1013,7 +1064,7 @@ async function playerAttack() {
 
         await appendLogAsync(`<span class="log-flavor">"${combatRes.flavorText}"</span>`, 'flavor', 'player');
         if (combatRes.isCrit) await appendLogAsync(`<span class="log-reward">⚡ [치명타 폭발!] ${combatRes.critText}</span>`, 'reward', 'player');
-        await appendLogAsync(`💥 ${currentEnemy.name}에게 ${combatRes.dmg} 피해! (HP: ${currentEnemy.hp}/${currentEnemy.maxHp})`, 'normal', 'player');
+        await appendLogAsync(`💥 ${currentEnemy.name}에게 <span class="combat-damage">${combatRes.dmg}</span> 피해! (남은 HP: ${currentEnemy.hp}/${currentEnemy.maxHp})`, 'normal', 'player');
 
         if (currentEnemy.hp <= 0) { await winCombat(); return; }
         await enemyTurnAsync();
@@ -1024,14 +1075,29 @@ async function playerSkill() {
     if (isProcessingTurn || gameState !== 'COMBAT' || !currentEnemy) return;
     let skill = JOB_SKILLS[player.job] || JOB_SKILLS["방랑자"];
     let isFree = (player.job === '원소술사' && player.tier >= 2 && Math.random() < 0.20);
+    let isChaosFree = (player.talents && player.talents.chaos >= 4 && Math.random() < 0.15); // 혼돈 4티어
+    if (isChaosFree) isFree = true;
+    
     let finalCost = Math.max(0, Math.floor(skill.cost * (1 - getSigilBonus('mpCostDec'))));
+    if (player.talents && player.talents.chaos >= 1) finalCost = Math.floor(finalCost * 0.85); // 혼돈 1티어
 
     if (!isFree) { if (player.mp < finalCost) { logNarrative(`⚠️ 마력이 부족합니다!`, "combat", "system"); return; } player.mp -= finalCost; }
 
     isProcessingTurn = true; setCombatButtonsDisabled(true);
     try {
+        combatTurnCount++;
+        const box = document.getElementById("narrative-log");
+        const divider = document.createElement("div");
+        divider.className = "combat-turn-divider";
+        divider.innerText = `[ 전투 턴 #${combatTurnCount} ]`;
+        box.appendChild(divider);
+        scrollToBottom();
+
         updateUI();
-        if (isFree) await appendLogAsync(`✨ <span style="color:var(--accent-blue);">[원소 메아리]</span> 마력을 소모하지 않고 스킬을 구사합니다!`, 'reward', 'player');
+        if (isFree) {
+            if (isChaosFree) await appendLogAsync(`✨ <span style="color:#c485e0;">[마력 폭주]</span> 특성 발동! 마력을 소모하지 않고 스킬을 구사합니다!`, 'reward', 'player');
+            else await appendLogAsync(`✨ <span style="color:var(--accent-blue);">[원소 메아리]</span> 마력을 소모하지 않고 스킬을 구사합니다!`, 'reward', 'player');
+        }
         else await appendLogAsync(`✨ 스킬 《${skill.name}》 구사!`, 'system', 'player');
 
         let castCount = (player.job === '흑마법사' && player.tier >= 2 && Math.random() < 0.15) ? 2 : 1;
@@ -1044,6 +1110,8 @@ async function playerSkill() {
 
             let combatRes = calculateCombatDamage(skillCalc.base, skillCalc.isMagic, currentEnemy);
             let vampRate = getAccessoryEffect('vampire') + getSigilBonus('vampire');
+            if (player.talents && player.talents.offense >= 2) vampRate += 5; // 학살 2티어
+            
             if (isRift) vampRate /= 2; if (isRift && currentRiftDebuff === '피의 저주') vampRate /= 2;
             if (vampRate > 0) player.hp = Math.min(getMaxHp(), player.hp + Math.floor(combatRes.dmg * (vampRate / 100)));
 
@@ -1052,7 +1120,7 @@ async function playerSkill() {
             
             await appendLogAsync(`<span class="log-flavor">"${combatRes.flavorText}"</span>`, 'flavor', 'player');
             if (combatRes.isCrit) await appendLogAsync(`<span class="log-reward">⚡ [치명타 폭발!] ${combatRes.critText}</span>`, 'reward', 'player');
-            await appendLogAsync(`🔥 ${currentEnemy.name}에게 ${combatRes.dmg} 피해! (HP: ${currentEnemy.hp}/${currentEnemy.maxHp})`, 'normal', 'player');
+            await appendLogAsync(`🔥 ${currentEnemy.name}에게 <span class="combat-damage">${combatRes.dmg}</span> 피해! (남은 HP: ${currentEnemy.hp}/${currentEnemy.maxHp})`, 'normal', 'player');
 
             if (currentEnemy.hp <= 0) break;
         }
@@ -1067,6 +1135,14 @@ async function playerUltimate() {
     isProcessingTurn = true; setCombatButtonsDisabled(true); player.ultimateCooldown = 4;
     
     try {
+        combatTurnCount++;
+        const box = document.getElementById("narrative-log");
+        const divider = document.createElement("div");
+        divider.className = "combat-turn-divider";
+        divider.innerText = `[ 전투 턴 #${combatTurnCount} ]`;
+        box.appendChild(divider);
+        scrollToBottom();
+
         updateUI();
         let jobGroup = "";
         if (['전사','성기사','광전사'].includes(player.job)) jobGroup = "warrior";
@@ -1078,13 +1154,13 @@ async function playerUltimate() {
             await appendLogAsync(`💥 <strong style="color:var(--accent-red); font-size:16px;">[궁극기: 태산명동참]</strong> 대지를 가르는 거대한 검기!`, 'system', 'player');
             let res = calculateCombatDamage(getPlayerAtk() * 3.5, false, currentEnemy, false, 0.5); 
             currentEnemy.hp = Math.max(0, currentEnemy.hp - res.dmg);
-            await appendLogAsync(`🛡️ 적의 방어력을 관통하여 ${res.dmg}의 피해! (HP: ${currentEnemy.hp}/${currentEnemy.maxHp})`, 'reward', 'player');
+            await appendLogAsync(`🛡️ 적의 방어력을 관통하여 <span class="combat-damage">${res.dmg}</span> 피해! (남은 HP: ${currentEnemy.hp}/${currentEnemy.maxHp})`, 'reward', 'player');
         } 
         else if (jobGroup === "mage") {
             await appendLogAsync(`💥 <strong style="color:var(--accent-blue); font-size:16px;">[궁극기: 초신성 폭발]</strong> 대기를 뒤흔드는 마법 폭발!`, 'system', 'player');
             let res = calculateCombatDamage(getPlayerMatk() * 4.0, true, currentEnemy);
             currentEnemy.hp = Math.max(0, currentEnemy.hp - res.dmg);
-            await appendLogAsync(`🔥 거대한 불길과 함께 ${res.dmg} 피해! (HP: ${currentEnemy.hp}/${currentEnemy.maxHp})`, 'reward', 'player');
+            await appendLogAsync(`🔥 거대한 불길과 함께 <span class="combat-damage">${res.dmg}</span> 피해! (남은 HP: ${currentEnemy.hp}/${currentEnemy.maxHp})`, 'reward', 'player');
         }
         else if (jobGroup === "rogue") {
             await appendLogAsync(`💥 <strong style="color:#c485e0; font-size:16px;">[궁극기: 환영 난무]</strong> 잔상을 남기며 3연속 급소 도륙!`, 'system', 'player');
@@ -1093,7 +1169,7 @@ async function playerUltimate() {
                 triggerEnemyPanelShake();
                 let res = calculateCombatDamage(base, false, currentEnemy, true); 
                 currentEnemy.hp = Math.max(0, currentEnemy.hp - res.dmg);
-                await delay(120); await appendLogAsync(`⚡ ${i+1}격! 치명적인 급소 타격으로 ${res.dmg} 피해!`, 'reward', 'player');
+                await delay(120); await appendLogAsync(`⚡ ${i+1}격! 치명적인 급소 타격으로 <span class="combat-damage">${res.dmg}</span> 피해!`, 'reward', 'player');
                 if (currentEnemy.hp <= 0) break;
             }
         }
@@ -1130,11 +1206,12 @@ async function enemyTurnAsync() {
     
     let mitigated = isTrueDamage ? enemyAtk : Math.max(1, enemyAtk - Math.floor(getPlayerDef() * 1.2));
     if (!isTrueDamage && ['전사','성기사','광전사'].includes(player.job) && player.tier >= 1) mitigated = Math.floor(mitigated * 0.9); 
+    if (player.talents && player.talents.defense >= 4) mitigated = Math.floor(mitigated * 0.9); // 철벽 4티어
 
     if (isTrueDamage) await appendLogAsync(`💥 <span style="color:#ff77ff; font-weight:bold;">[혼돈의 일격]</span> 방어력을 완벽히 무시한 끔찍한 고정 피해!`, 'combat', 'enemy');
     
     player.hp = Math.max(0, player.hp - mitigated); updateUI();
-    await appendLogAsync(`🩸 ${mitigated}의 피해를 입었습니다! (남은 HP: ${player.hp}/${getMaxHp()})`, 'combat', 'enemy');
+    await appendLogAsync(`🩸 <span class="combat-damage">${mitigated}</span>의 피해를 입었습니다! (남은 HP: ${player.hp}/${getMaxHp()})`, 'combat', 'enemy');
     
     if (player.hp > 0) { await applyTurnEndRegen(); } else { handleDeath(); }
 }
@@ -1144,6 +1221,8 @@ async function applyTurnEndRegen() {
     let regenLog = []; let isBloodCurse = (isRift && currentRiftDebuff === '피의 저주');
     
     let hpRegenRate = getAccessoryEffect('hpRegen') + getSigilBonus('hpRegen');
+    if (player.talents && player.talents.defense >= 3) hpRegenRate += 2; // 철벽 3티어
+    
     if (isRift) hpRegenRate /= 2; if (isBloodCurse) hpRegenRate /= 2;
     if (hpRegenRate > 0) {
         let hpHealed = Math.max(1, Math.floor(getMaxHp() * (hpRegenRate / 100)));
@@ -1166,6 +1245,7 @@ async function applyTurnEndRegen() {
 }
 
 async function winCombat() {
+    combatTurnCount = 0;
     await appendLogAsync(`🎉 전투 승리!`, "reward", "system");
     let isBoss = currentEnemy.isBoss;
 
@@ -1183,6 +1263,8 @@ async function winCombat() {
         let baseExp = 1800 + (riftFloor * 200);
 
         let riftGold = Math.floor(baseGold * (isBoss ? 3.5 : 1) * (1 + getAccessoryEffect('goldBoost')/100));
+        if (player.talents && player.talents.chaos >= 3) riftGold = Math.floor(riftGold * 1.20); // 혼돈 3티어
+        
         let riftExp = Math.floor(baseExp * (isBoss ? 3.5 : 1));
         
         player.gold += riftGold; player.exp += riftExp;
@@ -1221,6 +1303,8 @@ async function winCombat() {
 
     let isElite = currentEnemy.name.includes("정예");
     let goldGain = Math.floor(50 * (currentChapterIdx + 1) * (isBoss ? 5 : (isElite ? 3 : 1)) * (1 + getAccessoryEffect('goldBoost')/100));
+    if (player.talents && player.talents.chaos >= 3) goldGain = Math.floor(goldGain * 1.20); // 혼돈 3티어
+    
     let expGain = Math.floor(45 * (currentChapterIdx + 1) * (isBoss ? 6 : (isElite ? 2.8 : 1)));
     
     player.gold += goldGain; player.exp += expGain;
@@ -1241,6 +1325,7 @@ async function winCombat() {
 }
 
 function handleDeath() {
+    combatTurnCount = 0;
     if (isRift) {
         logNarrative(`☠️ 심연에 삼켜졌습니다... 모은 골드의 30%를 잃고 거점으로 쫓겨납니다.`, "combat", "system");
         player.gold = Math.max(0, player.gold - Math.floor(player.gold * 0.3));
@@ -1985,7 +2070,9 @@ function promptNextExploration() {
 function exploreForward() {
     dungeonDepth++; checkSubQuestProgress('explore');
     let hpRegenRate = getAccessoryEffect('hpRegen') + getSigilBonus('hpRegen');
+    if (player.talents && player.talents.defense >= 3) hpRegenRate += 2;
     if (hpRegenRate > 0) player.hp = Math.min(getMaxHp(), player.hp + Math.max(1, Math.floor(getMaxHp() * (hpRegenRate / 100))));
+    
     let mpRegenRate = getAccessoryEffect('mpRegen');
     if (mpRegenRate > 0) player.mp = Math.min(getMaxMp(), player.mp + Math.max(1, Math.floor(getMaxMp() * (mpRegenRate / 100))));
 
@@ -2006,7 +2093,7 @@ function triggerRestNode() { let heal = Math.floor(getMaxHp() * 0.3); player.hp 
 function triggerTrapNode() { let dmg = Math.floor(getMaxHp() * 0.12); player.hp = Math.max(1, player.hp - dmg); logNarrative(`⚠️ 맹독 덫을 밟아 ${dmg} 피해!`, "combat", "system"); promptNextExploration(); }
 
 function triggerCombat(isElite) {
-    gameState = "COMBAT"; let ch = CHAPTERS[currentChapterIdx];
+    gameState = "COMBAT"; combatTurnCount = 0; let ch = CHAPTERS[currentChapterIdx];
     let name = isElite ? `[정예] 흉포한 ${ch.name} 수호수` : `${ch.name} 야생 마물`;
     let hp = Math.floor(ch.lv * 60 * (isElite ? 1.8 : 1.0) + (dungeonDepth * 15)), atk = Math.floor(ch.lv * 10 * (isElite ? 1.4 : 1.0)), def = Math.floor(ch.lv * 3);
     currentEnemy = { name, hp, maxHp: hp, atk, def, matk: atk, mres: def, isBoss: false };
@@ -2014,7 +2101,7 @@ function triggerCombat(isElite) {
     renderCombatActions(); updateUI(); autoSave();
 }
 function triggerBossCombat() {
-    gameState = "COMBAT"; let ch = CHAPTERS[currentChapterIdx];
+    gameState = "COMBAT"; combatTurnCount = 0; let ch = CHAPTERS[currentChapterIdx];
     currentEnemy = { name: `[👑 보스] ${ch.boss}`, hp: ch.hp, maxHp: ch.hp, atk: ch.lv * 15 + 25, def: ch.lv * 5 + 5, matk: ch.lv * 15 + 20, mres: ch.lv * 5, isBoss: true };
     logNarrative(`챕터 보스 <span class="log-combat">${currentEnemy.name}</span> 등장!`, "combat", "system");
     renderCombatActions(); updateUI(); autoSave();
@@ -2023,9 +2110,15 @@ function triggerBossCombat() {
 function checkLevelUp() {
     let leveledUp = false;
     while (player.exp >= player.maxExp) {
-        player.exp -= player.maxExp; player.level++; player.statPoints += 5;
+        player.exp -= player.maxExp; player.level++; player.statPoints += 3;
         player.maxExp = Math.floor(player.maxExp * 1.35); leveledUp = true;
-        logNarrative(`🎉 레벨 업! Lv.${player.level} 달성! (스탯 포인트 +5)`, "reward", "system");
+        
+        if (player.level >= 5 && player.level % 2 === 1) { 
+            player.tp = (player.tp || 0) + 1; 
+            logNarrative(`🌟 깨달음을 얻었습니다! [특성 포인트(TP) 1 획득]`, "reward", "system"); 
+        }
+        
+        logNarrative(`🎉 레벨 업! Lv.${player.level} 달성! (스탯 포인트 +3)`, "reward", "system");
     }
     if (leveledUp) { player.hp = getMaxHp(); player.mp = getMaxMp(); updateUI(); }
 }
@@ -2046,6 +2139,7 @@ function triggerRelicDrop() {
 window.game = {
     setLanguage, closeModal, loginOrRegister, manualServerSave, loadGame, startAdventure,
     openChatModal, sendChatMessage,
+    openTalentModal, learnTalent,
     openInventory, setInventoryTab, selectInventoryItem, equipItem, unequip, toggleLockItem, discardItem, useItem, useItemInventory, useItemInCombatModal,
     openStatModal, addStatModal, enterHub, showChapterIntroModal, skipTypewriter, finishTypewriter, confirmStartDungeon, selectChapterModal,
     exploreVillage, openShoppingStreet, openInnModal, restAtInn, openBlacksmith, openGeneralStore,
