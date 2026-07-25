@@ -1094,8 +1094,12 @@ async function winCombat() {
         await appendLogAsync(`🏆 훈장 ${medalGain}개 획득!`, "reward", "system");
         
         // 🌟 [추가된 부분] 균열 전용 골드 및 경험치 폭풍 획득 로직! 
-        let riftGold = Math.floor(100 * riftFloor * (isBoss ? 5 : 1) * (1 + getAccessoryEffect('goldBoost')/100));
-        let riftExp = Math.floor(90 * riftFloor * (isBoss ? 6 : 1));
+       let baseGold = 2000 + (riftFloor * 250);
+       let baseExp = 1800 + (riftFloor * 200);
+
+       let riftGold = Math.floor(baseGold * (isBoss ? 3.5 : 1) * (1 + getAccessoryEffect('goldBoost')/100));
+       let riftExp = Math.floor(baseExp * (isBoss ? 3.5 : 1));
+📊 새로 세팅된 층별 보상 체감
         player.gold += riftGold; player.exp += riftExp;
         await appendLogAsync(`보상: 골드 +${riftGold}, 경험치 +${riftExp}`, "reward", "system");
         checkLevelUp(); // 균열에서도 레벨업이 정상적으로 처리되도록 추가!
@@ -1167,7 +1171,7 @@ function handleDeath() {
 
 function dropLoot(type, dropBonus) {
     if (Math.random() < 0.70) {
-        let trashList = ["야생 곰의 가죽", "이끼 낀 뼈조각", "오염 마물의 발톱", "누더기 가죽 조각", "녹슨 단검 조각", "썩어버린 뇌수"];
+        let trashList = ["야생 곰의 가죽", "이끼 낀 뼈조각", "오염된 마물의 발톱", "누더기 가죽 조각", "녹슨 단검 조각", "썩어버린 뇌수"];
         let trashName = trashList[currentChapterIdx % trashList.length];
         addItemToInventory({ name: trashName, type: 'trash', grade: '일반', count: 1 });
         logNarrative(`📦 잡동사니 획득: <span style="color:var(--text-muted);">[잡동사니] ${trashName}</span>`, "system", "system");
