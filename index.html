@@ -2153,6 +2153,11 @@ function checkLevelUp() {
         player.maxExp = Math.floor(player.maxExp * 1.35); leveledUp = true;
         
         if (player.level >= 5 && player.level % 2 === 1) { 
+            let spentTp = (player.talents.offense || 0) + (player.talents.defense || 0) + (player.talents.chaos || 0);
+            let totalTp = spentTp + (player.tp || 0);
+
+            // 총합이 12 미만일 때만 TP를 지급
+            if (totalTp < 12) {
             player.tp = (player.tp || 0) + 1; 
             logNarrative(`🌟 깨달음을 얻었습니다! [특성 포인트(TP) 1 획득]`, "reward", "system"); 
         }
