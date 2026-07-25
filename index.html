@@ -615,7 +615,26 @@ const JOB_SKILLS = {
     "암살자": { name: "칠흑의 멸살검", cost: 22, type: "physical", icon: "ra-dripping-knife", calcDamage: (p, enemy) => { return { base: getPlayerAtk() * 2.0 + getFinalDex() * 4.0, isMagic: false }; } },
     "의적": { name: "연막 환영참", cost: 18, type: "physical", icon: "ra-fast-backward-goggles", calcDamage: (p, enemy) => { return { base: getPlayerAtk() * 1.7 + getFinalDex() * 2.5 + getFinalInt() * 1.5, isMagic: false }; } }
 };
+ // JOB_SKILLS 선언 끝나는 부분 바로 아래에 붙여넣어 주세요.
 
+const EQUIPMENT_SLOTS = ["머리", "상의", "바지", "신발", "장갑", "주무기", "보조무기", "목걸이", "반지1", "반지2"];
+const EQUIPMENT_GRADES = ["일반", "정예", "희귀", "영웅", "전설", "균열"];
+const GEAR_TYPES = {
+    "물리무기": ["롱소드", "전투 도끼", "강철 창", "기사단 대검", "그림자 단검", "전투 망치"],
+    "마법무기": ["참나무 지팡이", "마도의 루비 완드", "성스러운 성물", "기묘한 마도서", "정령의 오브"],
+    "방어구": ["사슬 투구", "가죽 두건", "판금 갑옷", "사슬 갑옷", "판금 각반", "철장화", "가죽 장갑"],
+    "목걸이": ["구리 목걸이", "루비 목걸이", "영원의 펜던트", "미다스의 황금 목걸이"],
+    "반지": ["구리 반지", "은반지", "흡혈귀의 피빛 반지", "태초의 마나 반지"]
+};
+const HIT_FLAVORS = {
+    glance: ["검날이 상대의 단단한 비늘(갑옷)을 아슬아슬하게 스쳤다. 타격이 다소 깊지 못했다.", "적의 반사적인 회피 동작에 허를 찔렸다. 중심이 무너지며 위력이 반감되었다."],
+    normal: ["정확한 각도로 적의 급소를 향해 묵직한 충격을 밀어 넣었다.", "방어의 허를 파고든 정직한 일격이 상대의 육체에 깊은 타상을 남겼다."],
+    critical: ["상대의 움직임이 멈춘 찰나의 순간, 방어의 공백을 완벽하게 관통하는 예리한 일격이 터졌다!", "예측을 불허하는 각도에서 날아간 공격이 적의 치명적인 약점을 정확히 후벼팠다!"],
+    critExecute: ["뇌전이 치듯 순식간에 시야가 번쩍였다! 적의 갑옷이 박살 나며 시야를 붉게 물들인다!", "뼈와 살을 파고드는 끔찍한 충격! 완벽하고 잔혹한 급소 강타가 작렬했다!"]
+};
+function getRandomFlavor(type) { let arr = HIT_FLAVORS[type]; return arr[Math.floor(Math.random() * arr.length)]; }
+
+// 이 아래에는 const delay = (ms) => ... 등의 기존 코드가 이어집니다.
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 function scrollToBottom() { const logBox = document.getElementById('narrative-log'); if (logBox) logBox.scrollTop = logBox.scrollHeight; }
 function logNarrative(html, type = "normal", boxType = "system") {
