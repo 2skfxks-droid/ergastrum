@@ -6,10 +6,8 @@
     <title>《에르가스트룸: 왕국의 맹세》 - 정통 다크 판타지 로그라이크</title>
     <!-- 404 파비콘 에러 방지 -->
     <link rel="icon" href="data:,">
-    
     <!-- 구글 폰트 임포트 -->
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
-    
     <!-- RPG Awesome 웹 폰트 아이콘 라이브러리 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/nagoshiashumari/Rpg-Awesome@1.0.1/css/rpg-awesome.min.css">
 
@@ -32,12 +30,7 @@
             --glow-gold: 0 0 8px rgba(212, 175, 55, 0.4);
             --victory: #a4e87a;
         }
-
-        * {
-            box-sizing: border-box;
-            user-select: none;
-        }
-
+        * { box-sizing: border-box; user-select: none; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #0b0907; border-left: 1px solid var(--border-aged); }
         ::-webkit-scrollbar-thumb { background: #3a2e24; border: 1px solid var(--border-aged); border-radius: 4px; }
@@ -45,8 +38,7 @@
 
         body {
             margin: 0; padding: 0;
-            background: linear-gradient(rgba(5, 4, 4, 0.85), rgba(0, 0, 0, 0.95)), 
-                        url('https://images.unsplash.com/photo-1503788311183-bc3bf2edb8eb?auto=format&fit=crop&w=1920&q=80') center/cover no-repeat fixed;
+            background: linear-gradient(rgba(5, 4, 4, 0.85), rgba(0, 0, 0, 0.95)), url('https://images.unsplash.com/photo-1503788311183-bc3bf2edb8eb?auto=format&fit=crop&w=1920&q=80') center/cover no-repeat fixed;
             color: var(--text-main); font-family: 'Noto Serif KR', 'Georgia', serif;
             display: flex; justify-content: center; align-items: center; min-height: 100vh;
         }
@@ -63,13 +55,12 @@
             border-bottom: 2px solid var(--border-aged); display: flex; justify-content: space-between;
             align-items: center; padding: 0 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.8); z-index: 10;
         }
-
         .game-title { font-family: 'Cinzel', 'Noto Serif KR', serif; font-size: 20px; color: var(--accent-gold); letter-spacing: 4px; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.8), var(--glow-gold); }
         .header-menu { display: flex; gap: 12px; }
 
         .btn-mini { background: var(--btn-bg); border: 1px solid var(--border-aged); color: var(--text-main); padding: 6px 12px; font-size: 12px; font-family: 'Noto Serif KR', serif; cursor: pointer; border-radius: 3px; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
         .btn-mini:hover:not(:disabled) { background: var(--btn-hover); border-color: var(--accent-gold); color: #fff; box-shadow: var(--glow-gold); }
-
+        
         .stat-alert { border-color: var(--accent-gold) !important; box-shadow: 0 0 10px var(--accent-gold), inset 0 0 5px var(--accent-gold) !important; animation: pulse-gold 1.5s infinite; }
         @keyframes pulse-gold { 0% { border-color: var(--accent-gold); box-shadow: 0 0 5px var(--accent-gold); } 50% { border-color: #fff; box-shadow: 0 0 14px var(--accent-gold); } 100% { border-color: var(--accent-gold); box-shadow: 0 0 5px var(--accent-gold); } }
         @keyframes shake { 0% { transform: translate(0, 0); } 20% { transform: translate(-5px, 2px); } 40% { transform: translate(5px, -2px); } 60% { transform: translate(-3px, 1px); } 80% { transform: translate(3px, -1px); } 100% { transform: translate(0, 0); } }
@@ -92,7 +83,7 @@
 
         #center-display { background: url('data:image/svg+xml;utf8,<svg width="4" height="4" viewBox="0 0 4 4" xmlns="http://www.w3.org/2000/svg"><rect width="4" height="4" fill="%230b0907"/><rect width="1" height="1" fill="%2314110f"/></svg>'); display: flex; flex-direction: column; padding: 25px; gap: 20px; overflow: hidden; position: relative; }
         #center-display::before { content: ''; position: absolute; top:0; left:0; right:0; bottom:0; box-shadow: inset 0 0 80px rgba(0,0,0,1); pointer-events: none; z-index: 1; }
-
+        
         .narrative-box { flex: 1; background: rgba(8, 6, 5, 0.85); border: 1px solid var(--border-aged); border-radius: 4px; padding: 25px; overflow-y: auto; font-size: 15px; line-height: 1.9; color: #d1c29e; box-shadow: inset 0 0 30px rgba(0,0,0,1); scroll-behavior: smooth; position: relative; z-index: 2; }
         .narrative-box p { margin: 0 0 10px 0; text-shadow: 1px 1px 1px #000; padding: 6px 10px; border-radius: 3px; }
         .log-box-player { background: rgba(42, 60, 78, 0.4); border-left: 3px solid var(--accent-blue); }
@@ -809,7 +800,8 @@ function promptNextRiftExploration() {
 }
 
 function triggerRiftCombat(isBoss) {
-    gameState = "COMBAT"; let N = riftFloor;
+    gameState = "COMBAT";
+    let N = riftFloor;
     let hp = Math.floor(50000 + (N * 4000) * Math.pow(1.04, N));
     let atk = Math.floor(800 + (N * 120) * Math.pow(1.02, N));
     let def = 300 + (N * 20);
@@ -862,25 +854,6 @@ function renderCombatActions() {
         <button class="btn-choice" onclick="game.tryFlee()"><i class="ra ra-player-dodge"></i> 도망치기</button>
     `;
     container.innerHTML = html;
-}
-
-// 누락되었던 전투 중 아이템 사용 모달 함수 복구
-function useItemInCombatModal() {
-    let html = `<h2>소모품 사용</h2>`;
-    let items = player.inventory.filter(i => i.type === 'potion' || i.type === 'return_stone' || i.type === 'return_talisman');
-    if (items.length === 0) {
-        html += `<p style="font-size:13px; color:var(--text-muted); text-align:center; margin-top:20px;">사용 가능한 소모품이 없습니다.</p>`;
-    } else {
-        items.forEach(item => {
-            let rIdx = player.inventory.indexOf(item);
-            html += `<p style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-aged); padding-bottom:5px;">
-                <span>${getItemIcon(item)} ${item.name} [x${item.count || 1}]</span>
-                <button class="btn-mini" onclick="game.useItem(${rIdx})">사용하기</button>
-            </p>`;
-        });
-    }
-    html += `<button class="btn-choice full-width" style="text-align:center; justify-content:center; margin-top:15px;" onclick="game.closeModal()">닫기</button>`;
-    showModal(html);
 }
 
 async function playerAttack() {
@@ -1159,8 +1132,70 @@ function dropLoot(type, dropBonus) {
     }
 }
 
+function generateEquipment(slot, grade, chIdx) {
+    let gradeIdx = Math.max(0, EQUIPMENT_GRADES.indexOf(grade));
+    let reqLevel = Math.max(1, (chIdx * 3) + (gradeIdx * 2)); 
+    let statMultiplier = Math.floor(reqLevel * 1.5) + (gradeIdx * 4); 
+    if (gradeIdx === 5) statMultiplier = Math.floor(statMultiplier * 1.3); // 균열 등급
+
+    let gear = { name: "", type: "gear", slot, grade, reqLevel: reqLevel, price: statMultiplier * 15, count: 1, options: [], isLocked: false };
+
+    if (slot === '주무기' || slot === '보조무기') {
+        let isMagic = Math.random() < 0.35; gear.weaponType = isMagic ? "마법" : "물리";
+        let names = GEAR_TYPES[isMagic ? "마법무기" : "물리무기"]; gear.name = names[Math.floor(Math.random() * names.length)];
+        if (isMagic) { gear.matk = Math.floor(statMultiplier * 1.8) + 8; gear.atk = 0; } else { gear.atk = Math.floor(statMultiplier * 1.8) + 10; gear.matk = 0; }
+    } else if (slot === '목걸이' || slot === '반지1' || slot === '반지2') {
+        let typeKey = slot === '목걸이' ? "목걸이" : "반지"; let names = GEAR_TYPES[typeKey]; gear.name = names[Math.floor(Math.random() * names.length)];
+        gear.def = gradeIdx * 2; gear.effect = generateAccessoryEffect(gradeIdx);
+    } else { let names = GEAR_TYPES["방어구"]; gear.name = names[Math.floor(Math.random() * names.length)]; gear.def = Math.floor(statMultiplier * 0.8) + 3; }
+    
+    gear.baseAtk = gear.atk || 0; gear.baseMatk = gear.matk || 0; gear.baseDef = gear.def || 0;
+
+    let optionCount = gradeIdx <= 1 ? 0 : (gradeIdx === 2 ? 1 : (gradeIdx === 3 ? 2 : (gradeIdx === 4 ? 3 : 4)));
+    let possibleOptions = ['str', 'dex', 'int', 'con', 'crit', 'mp'];
+    for (let i = 0; i < optionCount; i++) {
+        let optType = possibleOptions[Math.floor(Math.random() * possibleOptions.length)];
+        while (gear.options.some(o => o.type === optType)) { optType = possibleOptions[Math.floor(Math.random() * possibleOptions.length)]; }
+        let val = (chIdx + 1) * 2 + (gradeIdx * 3); if (optType === 'crit') val = 2 + gradeIdx;
+        gear.options.push({ type: optType, val });
+    }
+    return gear;
+}
+
+function generateAccessoryEffect(gradeIdx) {
+    const effects = [
+        { type: 'hpRegen', label: '턴 종료 시 체력 회복', baseVal: 2 },
+        { type: 'vampire', label: '공격 시 흡혈', baseVal: 3 },
+        { type: 'goldBoost', label: '추가 골드 획득', baseVal: 15 },
+        { type: 'dropBoost', label: '아이템 드랍률 증가', baseVal: 5 },
+        { type: 'mpRegen', label: '매 턴 마력 회복', baseVal: 3 }
+    ];
+    let eff = effects[Math.floor(Math.random() * effects.length)];
+    return { type: eff.type, label: eff.label, val: Math.floor(eff.baseVal + (gradeIdx * (eff.baseVal * 0.6))) };
+}
+
+function getItemIcon(item) {
+    let iconClass = 'ra-sword';
+    if (item.slot === '주무기') iconClass = item.weaponType === '마법' ? 'ra-crystal-wand' : 'ra-sword';
+    else if (item.slot === '보조무기') iconClass = 'ra-shield';
+    else if (item.slot === '목걸이') iconClass = 'ra-gem-pendant';
+    else if (item.slot && item.slot.includes('반지')) iconClass = 'ra-ring';
+    else if (item.slot === '머리') iconClass = 'ra-helmet';
+    else if (item.slot === '상의') iconClass = 'ra-vest';
+    else if (item.slot === '바지') iconClass = 'ra-trousers'; 
+    else if (item.slot === '신발') iconClass = 'ra-boot';
+    else if (item.slot === '장갑') iconClass = 'ra-glove';
+    else if (item.type === 'potion') iconClass = item.subType === 'hp' ? 'ra-health-potion' : 'ra-flask';
+    else if (item.type === 'stone') iconClass = item.subType === 'transcendent' ? 'ra-crystals' : 'ra-diamond';
+    else if (item.type === 'return_talisman') iconClass = 'ra-scroll-unfurled';
+    else if (item.type === 'trash') iconClass = 'ra-broken-bone';
+    else if (item.type === 'sigil') iconClass = 'ra-flare'; 
+    let colorStyle = (item.type === 'stone' && item.subType === 'transcendent') || item.type === 'sigil' ? 'color:#ff77ff;' : '';
+    return `<i class="ra ${iconClass}" style="${colorStyle}"></i>`;
+}
+
 // ==========================================
-// 인벤토리 모달, 소모품/유물 사용 로직
+// 인벤토리 & 아이템 모달 로직
 // ==========================================
 async function useItem(idx) {
     if (isProcessingTurn) return;
@@ -1181,9 +1216,7 @@ async function useItem(idx) {
             await appendLogAsync(`🧪 [${item.name}] 사용! ${item.subType === 'hp' ? '체력' : '마력'}을 ${healAmount} 회복.`, 'reward', 'system');
             if (item.count > 1) item.count--; else player.inventory.splice(idx, 1);
             closeModal(); updateUI(); if (gameState === "COMBAT") await enemyTurnAsync();
-        } else if (item.type === 'return_talisman' || item.type === 'return_stone') { 
-            closeModal(); useReturnStoneQuick(); 
-        }
+        } else if (item.type === 'return_talisman' || item.type === 'return_stone') { closeModal(); useReturnStoneQuick(); }
         autoSave();
     } finally { if (gameState === "COMBAT") { setCombatButtonsDisabled(false); isProcessingTurn = false; } }
 }
@@ -1233,7 +1266,7 @@ function renderInventoryModal() {
     });
     html += `</div>`;
 
-    let tabs = [{ id: 'all', label: '전체' }, { id: 'gear', label: '장비' }, { id: 'consumable', label: '소모/특수' }, { id: 'trash', label: '잡동사니' }];
+    let tabs = [{ id: 'all', label: '전체' }, { id: 'gear', label: '장비' }, { id: 'consumable', label: '소모품/재료' }, { id: 'trash', label: '잡동사니' }];
     html += `<div style="display:flex; gap:6px; margin-bottom:4px;">`;
     tabs.forEach(t => { html += `<button class="btn-mini" style="flex:1; padding:6px 0; text-align:center; ${currentInvTab === t.id ? "background:var(--btn-hover); border-color:var(--accent-gold); color:var(--accent-gold); font-weight:bold;" : "opacity:0.7;"}" onclick="game.setInventoryTab('${t.id}')">${t.label}</button>`; });
     html += `</div><div class="inventory-grid">`;
@@ -1702,4 +1735,103 @@ function openQuestModal() {
     showModal(html);
 }
 function completeChapterQuest() {
-    closeModal(); logNarrative(`I encountered an error doing what you asked. Could you try again?
+    closeModal(); logNarrative(`🎉 메인 임무 완료 보고 승인! 대륙에 새겨진 어둠이 한 겹 벗겨집니다.`, "reward", "system");
+    if (currentChapterIdx === 0 && player.tier === 0) { openJobModal(1); return; }
+    else if (currentChapterIdx === 3 && player.tier === 1) { openJobModal(2); return; }
+    if (unlockedChapter === currentChapterIdx + 1 && unlockedChapter < 10) { unlockedChapter++; currentChapterIdx = unlockedChapter - 1; }
+    enterHub();
+}
+function openJobModal(tier) {
+    let html = `<h2>${tier}차 전직 선택</h2>`;
+    if (tier === 1) {
+        html += `<button class="btn-choice full-width" style="justify-content:center; margin:4px 0;" onclick="game.setJob('전사', 1)"><i class="ra ra-sword"></i> 전사</button>`;
+        html += `<button class="btn-choice full-width" style="justify-content:center; margin:4px 0;" onclick="game.setJob('마법사', 1)"><i class="ra ra-crystal-wand"></i> 마법사</button>`;
+        html += `<button class="btn-choice full-width" style="justify-content:center; margin:4px 0;" onclick="game.setJob('도적', 1)"><i class="ra ra-daggers"></i> 도적</button>`;
+    } else {
+        if (player.job === '전사') { html += `<button class="btn-choice full-width" style="justify-content:center; margin:4px 0;" onclick="game.setJob('성기사', 2)"><i class="ra ra-sun-radiations"></i> 성기사</button><button class="btn-choice full-width" style="justify-content:center; margin:4px 0;" onclick="game.setJob('광전사', 2)"><i class="ra ra-bleeding-eye"></i> 광전사</button>`; } 
+        else if (player.job === '마법사') { html += `<button class="btn-choice full-width" style="justify-content:center; margin:4px 0;" onclick="game.setJob('원소술사', 2)"><i class="ra ra-burning-meteor"></i> 원소술사</button><button class="btn-choice full-width" style="justify-content:center; margin:4px 0;" onclick="game.setJob('흑마법사', 2)"><i class="ra ra-skull"></i> 흑마법사</button>`; } 
+        else { html += `<button class="btn-choice full-width" style="justify-content:center; margin:4px 0;" onclick="game.setJob('암살자', 2)"><i class="ra ra-dripping-knife"></i> 암살자</button><button class="btn-choice full-width" style="justify-content:center; margin:4px 0;" onclick="game.setJob('의적', 2)"><i class="ra ra-fast-backward-goggles"></i> 의적</button>`; }
+    }
+    showModal(html);
+}
+function setJob(jobName, tier) { player.job = jobName; player.tier = tier; closeModal(); logNarrative(`[${jobName}](으)로 전직하였습니다!`, "reward", "system"); enterHub(); }
+
+function promptNextExploration() {
+    const container = document.getElementById("action-container"); let canMeetBoss = dungeonDepth >= 7;
+    if (canMeetBoss && Math.random() < 0.4) {
+        container.innerHTML = `
+            <button class="btn-choice full-width stat-alert" style="background:linear-gradient(to bottom, #3b1515, #1f0b0b); border-color:var(--accent-red); justify-content:center;" onclick="game.triggerBossCombat()"><i class="ra ra-crown"></i> 최종 보스와 조우하기 (${CHAPTERS[currentChapterIdx].boss})</button>
+            <button class="btn-choice full-width" style="justify-content:center;" onclick="game.exploreForward()"><i class="ra ra-footprint"></i> 주변을 더 수색한다</button>
+            <button class="btn-choice full-width" style="justify-content:center;" onclick="game.useReturnStoneExploration()"><i class="ra ra-crystal-ball"></i> 거점으로 탈출</button>`;
+    } else {
+        container.innerHTML = `
+            <button class="btn-choice full-width" style="justify-content:center;" onclick="game.exploreForward()"><i class="ra ra-compass"></i> 앞으로 전진하기 (탐험 깊이: ${dungeonDepth})</button>
+            <button class="btn-choice full-width" style="justify-content:center;" onclick="game.useReturnStoneExploration()"><i class="ra ra-crystal-ball"></i> 거점으로 탈출</button>`;
+    }
+    updateUI();
+}
+
+function exploreForward() {
+    dungeonDepth++; checkSubQuestProgress('explore');
+    let hpRegenRate = getAccessoryEffect('hpRegen') + getSigilBonus('hpRegen');
+    if (hpRegenRate > 0) player.hp = Math.min(getMaxHp(), player.hp + Math.max(1, Math.floor(getMaxHp() * (hpRegenRate / 100))));
+    let mpRegenRate = getAccessoryEffect('mpRegen');
+    if (mpRegenRate > 0) player.mp = Math.min(getMaxMp(), player.mp + Math.max(1, Math.floor(getMaxMp() * (mpRegenRate / 100))));
+
+    logNarrative(`차가운 발걸음이 깊은 곳으로 향합니다... (탐험 깊이 ${dungeonDepth})`, "system", "system");
+    let rand = Math.random();
+    if (rand < 0.35) triggerCombat(false); else if (rand < 0.55) triggerCombat(true); else if (rand < 0.70) triggerForkNode(); else if (rand < 0.85) triggerRestNode(); else triggerTrapNode();
+}
+function triggerForkNode() {
+    logNarrative(`어둠 속에서 두 갈래의 갈림길이 나타났습니다. 어느 쪽을 택하시겠습니까?`, "system", "system");
+    document.getElementById("action-container").innerHTML = `<button class="btn-choice" onclick="game.resolveFork('safe')"><i class="ra ra-player-dodge"></i> 고요한 샛길로 우회하기</button><button class="btn-choice" onclick="game.resolveFork('danger')"><i class="ra ra-tombstone"></i> 피비린내 나는 험한 길로 돌파</button>`;
+}
+function resolveFork(choice) {
+    if (choice === 'safe') { let gold = 20 * (currentChapterIdx + 1); player.gold += gold; logNarrative(`안전한 길을 돌아 나오며 ${gold} G 발견.`, "reward", "system"); } 
+    else { if (Math.random() < 0.5) { triggerCombat(true); return; } else { let heal = Math.floor(getMaxHp() * 0.25); player.hp = Math.min(getMaxHp(), player.hp + heal); logNarrative(`험난한 길 끝 은밀한 샘에서 체력 ${heal} 회복.`, "reward", "system"); } }
+    promptNextExploration(); updateUI();
+}
+function triggerRestNode() { let heal = Math.floor(getMaxHp() * 0.3); player.hp = Math.min(getMaxHp(), player.hp + heal); logNarrative(`잠시 숨을 고르며 상처 보살핌. 체력 ${heal} 회복.`, "reward", "system"); promptNextExploration(); }
+function triggerTrapNode() { let dmg = Math.floor(getMaxHp() * 0.12); player.hp = Math.max(1, player.hp - dmg); logNarrative(`⚠️ 맹독 덫을 밟아 ${dmg} 피해!`, "combat", "system"); promptNextExploration(); }
+
+function triggerCombat(isElite) {
+    gameState = "COMBAT"; let ch = CHAPTERS[currentChapterIdx];
+    let name = isElite ? `[정예] 흉포한 ${ch.name} 수호수` : `${ch.name} 야생 마물`;
+    let hp = Math.floor(ch.lv * 60 * (isElite ? 1.8 : 1.0) + (dungeonDepth * 15)), atk = Math.floor(ch.lv * 10 * (isElite ? 1.4 : 1.0)), def = Math.floor(ch.lv * 3);
+    currentEnemy = { name, hp, maxHp: hp, atk, def, matk: atk, mres: def, isBoss: false };
+    logNarrative(`적 조우: <span class="log-combat">${name}</span> (HP: ${hp})`, "combat", "system");
+    renderCombatActions(); updateUI(); autoSave();
+}
+function triggerBossCombat() {
+    gameState = "COMBAT"; let ch = CHAPTERS[currentChapterIdx];
+    currentEnemy = { name: `[👑 보스] ${ch.boss}`, hp: ch.hp, maxHp: ch.hp, atk: ch.lv * 15 + 25, def: ch.lv * 5 + 5, matk: ch.lv * 15 + 20, mres: ch.lv * 5, isBoss: true };
+    logNarrative(`챕터 보스 <span class="log-combat">${currentEnemy.name}</span> 등장!`, "combat", "system");
+    renderCombatActions(); updateUI(); autoSave();
+}
+
+// ==========================================
+// 전체 함수 window.game 매핑 
+// ==========================================
+window.game = {
+    setLanguage, closeModal, loginOrRegister, manualServerSave, loadGame, startAdventure,
+    openChatModal, sendChatMessage,
+    openInventory, setInventoryTab, selectInventoryItem, equipItem, unequip, toggleLockItem, discardItem, useItem, useItemInventory,
+    openStatModal, addStatModal, enterHub, showChapterIntroModal, skipTypewriter, confirmStartDungeon, selectChapterModal,
+    exploreVillage, openShoppingStreet, openInnModal, restAtInn, openBlacksmith, openGeneralStore,
+    openQuestModal, completeChapterQuest, openJobModal, setJob, openAltarModal, buyAltar,
+    openRelics, moveToStorage, equipFromStorage, dropStorageRelic, dropRelic, openRelicChoiceModal, replaceRelic,
+    openBulletinBoard, refreshBulletinBoard, acceptSubQuest, abandonSubQuest, completeSubQuest,
+    useReturnStoneQuick, useReturnStoneExploration, exploreForward, resolveFork,
+    triggerBossCombat, playerAttack, playerSkill, playerUltimate, tryFlee,
+    sellAllGear, sellItem, sellAllTrash, openEnhanceModal, confirmEnhance, executeEnhance,
+    buyBaseGear, buyPotion, buyTalisman, buyStone,
+    enterRift, promptNextRiftExploration, triggerRiftCombat, escapeRift, openSigilRelicSelect, openSigilOptionSelect, applySigil
+};
+
+window.onload = function() { 
+    updateUI(); 
+    setLanguage('ko'); 
+};
+</script>
+</body>
+</html>
