@@ -2110,10 +2110,31 @@ function buyTalisman(name, price) { if (player.gold >= price) { if (player.inven
 function buyStone(name, subType, price) { if (player.gold >= price) { if (player.inventory.length >= 50) return; player.gold -= price; addItemToInventory({ name, type: 'stone', subType, grade: '희귀', count: 1 }); closeModal(); openGeneralStore(); updateUI(); autoSave(); } else alert("골드 부족!"); }
 
 function openEnhanceModal() {
+    // 보유 중인 재료 개수 가져오기
+    let w = getStoneCount('weapon'), a = getStoneCount('armor'), t = getStoneCount('transcendent'), p = getStoneCount('protect');
+
     let html = `<h2>장비 강화</h2>`;
-    html += `<div style="background:rgba(20,18,16,0.8); border:1px solid var(--accent-gold); padding:8px; border-radius:4px; margin-bottom:12px; text-align:center; box-shadow:0 0 8px rgba(212,175,55,0.2);">
+    
+    // 1. 실패 보정 스택
+    html += `<div style="background:rgba(20,18,16,0.8); border:1px solid var(--accent-gold); padding:8px; border-radius:4px; margin-bottom:8px; text-align:center; box-shadow:0 0 8px rgba(212,175,55,0.2);">
         <span style="color:var(--text-main); font-size:13px;">🔥 집념의 스택 (실패 보정): <strong style="color:var(--accent-gold); font-size:15px;">${player.enhanceFailStack || 0}</strong> </span>
         <span style="font-size:11px; color:var(--text-muted);">(다음 강화 성공률 +${(player.enhanceFailStack || 0) * 2}%)</span>
+    </div>`;
+
+    // 2. 보유 재료 현황 UI (요청하신 부분)
+    html += `<div style="background:rgba(20,18,16,0.8); border:1px solid var(--border-aged); padding:8px; border-radius:4px; margin-bottom:8px; font-size:12px; display:flex; justify-content:space-around; flex-wrap:wrap; gap:6px;">
+        <span>⚔️ 무기 강화석: <strong style="color:var(--accent-red);">${w}</strong></span>
+        <span>🛡️ 방어구 강화석: <strong style="color:var(--accent-blue);">${a}</strong></span>
+        <span>🔮 초월의 파편: <strong style="color:#ff77ff;">${t}</strong></span>
+        <span>🔰 보호권: <strong style="color:var(--accent-gold);">${p}</strong></span>
+    </div>`;
+
+    // 3. 보호권 자동 사용 체크박스 (확인창 생략에 따른 편의성)
+    html += `<div style="margin-bottom: 12px; text-align: center; background: rgba(229, 184, 64, 0.1); padding: 8px; border: 1px solid var(--accent-gold); border-radius: 4px;">
+        <label style="cursor:pointer; color:var(--accent-gold); font-size:13px; font-weight:bold; display:flex; align-items:center; justify-content:center; gap:8px;">
+            <input type="checkbox" id="use-protect-checkbox" ${p > 0 ? '' : 'disabled'}>
+            🔰 파괴 위험 구간(+8 이상) 보호권 자동 사용
+        </label>
     </div>`;
 
     let hasGear = false;
@@ -2125,83 +2146,50 @@ function openEnhanceModal() {
                 let reqStoneType = (slot === '주무기' || slot === '보조무기') ? 'weapon' : 'armor';
                 if (eq.grade === '균열') reqStoneType = 'transcendent';
                 let reqStoneName = reqStoneType === 'weapon' ? '무기 강화석' : (reqStoneType === 'armor' ? '방어구 강화석' : '초월의 파편');
-                let stoneCount = getStoneCount(reqStoneType);
+                
                 let riskText = cur >= 10 ? `<span style="color:#c485e0; font-weight:bold;">[🔥 극한 증폭]</span>` : (cur >= 7 ? `<span style="color:var(--accent-red); font-weight:bold;">[⚠️ 파괴 위험]</span>` : (cur >= 4 ? `<span style="color:var(--accent-gold);">[주의 구간]</span>` : `<span style="color:var(--victory);">[안전 구간]</span>`));
                 
                 html += `<div style="background:rgba(20,18,16,0.9); border:1px solid var(--border-aged); padding:10px; margin-bottom:8px; border-radius:4px; display:flex; justify-content:space-between; align-items:center; box-shadow:inset 0 0 10px rgba(0,0,0,0.5);">
-                    <div><span class="grade-${eq.grade}" style="font-size:14px; font-weight:bold;">[${slot}] ${eq.name} <span style="color:var(--text-main);">(+${cur})</span></span><br><div style="font-size:12px; margin-top:4px;">${riskText} | 필요: ${reqStoneName} (보유: ${stoneCount})</div></div>
-                    <button class="btn-mini" style="background:linear-gradient(to bottom, #2c241b, #1a1510); padding:8px 12px;" onclick="window.game.confirmEnhance('${slot}')">강화 시도</button>
+                    <div><span class="grade-${eq.grade}" style="font-size:14px; font-weight:bold;">[${slot}] ${eq.name} <span style="color:var(--text-main);">(+${cur})</span></span><br><div style="font-size:12px; margin-top:4px;">${riskText} | 필요: ${reqStoneName} 1개</div></div>
+                    <button class="btn-mini" style="background:linear-gradient(to bottom, #2c241b, #1a1510); padding:8px 12px;" onclick="window.game.executeEnhance('${slot}')">강화 시도</button>
                 </div>`;
             }
         }
     });
 
-    if (!hasGear) html += `<p style="font-size:12.5px; color:var(--text-muted); text-align:center; padding:20px;">착용 중인 장비가 없습니다.</p>`;
+    if (!hasGear) html += `<p style="font-size:12.5px; color:var(--text-muted); text-align:center; padding:20px;">강화 가능한 장비가 없습니다.</p>`;
     html += `<button class="btn-choice full-width" style="justify-content:center; margin-top:15px;" onclick="window.game.closeModal(); window.game.openBlacksmith();">뒤로 가기</button>`;
-    showModal(html);
-}
-function confirmEnhance(slot) {
-    let eq = player.equipment[slot]; if (!eq) return;
-    let cur = eq.enhance || 0, reqStoneType = (slot === '주무기' || slot === '보조무기') ? 'weapon' : 'armor';
-    if (eq.grade === '균열') reqStoneType = 'transcendent';
-    let reqStoneName = reqStoneType === 'weapon' ? '무기 강화석' : (reqStoneType === 'armor' ? '방어구 강화석' : '초월의 파편');
-    let stoneIdx = player.inventory.findIndex(i => i.type === 'stone' && i.subType === reqStoneType);
-    if (stoneIdx === -1) { alert(`⚠️ [${reqStoneName}]이(가) 부족합니다!`); return; }
-
-    let baseSuccess = Math.max(5, 90 - (cur * 6)), successRate = Math.min(100, baseSuccess + ((player.enhanceFailStack || 0) * 2));
-    let destroyRate = cur >= 10 ? 35 + ((cur - 10) * 5) : (cur >= 8 ? 20 : 0); destroyRate = Math.min(destroyRate, 100 - successRate);
-    let totalFail = 100 - successRate - destroyRate, dropRate = cur >= 5 ? Math.floor(totalFail * 0.5) : 0;
-    
-    let bonus = getEnhanceBonus(eq, cur), bonusHtml = "";
-    if(bonus.atk > 0) bonusHtml += `공격력 <span style="color:var(--accent-gold);">+${bonus.atk}</span> `;
-    if(bonus.matk > 0) bonusHtml += `마법 공격력 <span style="color:var(--accent-gold);">+${bonus.matk}</span> `;
-    if(bonus.def > 0) bonusHtml += `방어력 <span style="color:var(--accent-gold);">+${bonus.def}</span> `;
-
-    let protectCount = getStoneCount('protect');
-    let protectHtml = "";
-    if (destroyRate > 0) {
-        protectHtml = `<div style="margin-top:12px; text-align:center; background:rgba(229, 184, 64, 0.1); padding:8px; border:1px solid var(--accent-gold); border-radius:4px;">
-            <label style="cursor:pointer; color:var(--accent-gold); font-weight:bold; display:flex; align-items:center; justify-content:center; gap:8px;">
-                <input type="checkbox" id="use-protect-checkbox" ${protectCount > 0 ? '' : 'disabled'}>
-                🔰 장비 파괴 보호권 사용 (보유: ${protectCount}개)
-            </label>
-        </div>`;
-    }
-
-    let html = `<h2>⚠️ 장비 강화 시도</h2><div style="background:#000; padding:15px; border:1px solid var(--border-aged); border-radius:4px; margin-bottom:15px; text-align:left; line-height:1.8;">
-        <div style="color:var(--victory); font-weight:bold;">✓ 성공 확률: ${successRate}%</div><div style="color:var(--text-muted);">✗ 실패 확률 (수치 유지): ${totalFail - dropRate}%</div>
-        ${cur >= 5 ? `<div style="color:var(--accent-gold);">📉 실패 확률 (수치 1 하락): ${dropRate}%</div>` : ''}
-        ${cur >= 8 ? `<div style="color:var(--accent-red); font-weight:bold;">💥 장비 파괴 확률: ${destroyRate}%</div>` : ''}
-        <div style="margin-top:10px; font-size:12px; border-top:1px dashed var(--border-aged); padding-top:8px;">소모: ${reqStoneName} 1개</div>
-        <div style="margin-top:4px; font-size:12px; color:var(--text-main);">✨ <strong>성공 시 예상 스탯:</strong> ${bonusHtml}</div>
-        ${protectHtml}
-    </div><div style="display:flex; gap:12px; margin-top:20px;">
-        <button class="btn-choice full-width" style="justify-content:center;" onclick="window.game.executeEnhance('${slot}')">확인 (강화 진행)</button>
-        <button class="btn-choice full-width" style="justify-content:center;" onclick="window.game.openEnhanceModal()">취소</button>
-    </div>`;
     showModal(html);
 }
 function executeEnhance(slot) {
     let eq = player.equipment[slot]; if (!eq) return;
     let reqStoneType = (slot === '주무기' || slot === '보조무기') ? 'weapon' : 'armor'; if (eq.grade === '균열') reqStoneType = 'transcendent';
-    let stoneIdx = player.inventory.findIndex(i => i.type === 'stone' && i.subType === reqStoneType); if (stoneIdx === -1) return; 
+    let reqStoneName = reqStoneType === 'weapon' ? '무기 강화석' : (reqStoneType === 'armor' ? '방어구 강화석' : '초월의 파편');
     
-    let useProtect = false;
-    let protectCheckbox = document.getElementById('use-protect-checkbox');
-    if (protectCheckbox && protectCheckbox.checked) {
-        let pIdx = player.inventory.findIndex(i => i.type === 'stone' && i.subType === 'protect');
-        if (pIdx === -1) { alert("⚠️ 보호권이 부족합니다!"); return; }
-        useProtect = true;
-        if (player.inventory[pIdx].count > 1) player.inventory[pIdx].count--; else player.inventory.splice(pIdx, 1);
-    }
-
-    if (player.inventory[stoneIdx].count > 1) player.inventory[stoneIdx].count--; else player.inventory.splice(stoneIdx, 1);
+    // 1. 강화석 체크
+    let stoneIdx = player.inventory.findIndex(i => i.type === 'stone' && i.subType === reqStoneType); 
+    if (stoneIdx === -1) { alert(`⚠️ [${reqStoneName}]이(가) 부족합니다!`); return; } 
 
     let cur = eq.enhance || 0, bonus = getEnhanceBonus(eq, cur); 
     let baseSuccess = Math.max(5, 90 - (cur * 6)), successRate = Math.min(100, baseSuccess + ((player.enhanceFailStack || 0) * 2));
     let destroyRate = cur >= 10 ? 35 + ((cur - 10) * 5) : (cur >= 8 ? 20 : 0); destroyRate = Math.min(destroyRate, 100 - successRate);
     let totalFail = 100 - successRate - destroyRate, dropRate = cur >= 5 ? Math.floor(totalFail * 0.5) : 0, roll = Math.random() * 100;
 
+    let useProtect = false;
+    let protectCheckbox = document.getElementById('use-protect-checkbox');
+    
+    // 2. 보호권 로직 (체크되어 있고, 장비 파괴 확률이 0보다 클 때만 소모)
+    if (protectCheckbox && protectCheckbox.checked && destroyRate > 0) {
+        let pIdx = player.inventory.findIndex(i => i.type === 'stone' && i.subType === 'protect');
+        if (pIdx === -1) { alert("⚠️ 장비 파괴 보호권이 부족합니다!"); return; }
+        useProtect = true;
+        if (player.inventory[pIdx].count > 1) player.inventory[pIdx].count--; else player.inventory.splice(pIdx, 1);
+    }
+
+    // 3. 강화석 1개 소모
+    if (player.inventory[stoneIdx].count > 1) player.inventory[stoneIdx].count--; else player.inventory.splice(stoneIdx, 1);
+
+    // 4. 강화 확률 계산 적용
     if (roll < successRate) {
         player.enhanceFailStack = 0; eq.enhance = cur + 1;
         if (eq.baseAtk !== undefined && eq.baseAtk > 0) eq.atk += bonus.atk; if (eq.baseMatk !== undefined && eq.baseMatk > 0) eq.matk += bonus.matk; if (eq.baseDef !== undefined && eq.baseDef > 0) eq.def += bonus.def;
@@ -2224,9 +2212,8 @@ function executeEnhance(slot) {
         player.enhanceFailStack = (player.enhanceFailStack || 0) + 1; 
         logNarrative(`❌ [강화 실패] 수치 유지.`, "combat", "system"); 
     }
-    closeModal(); openEnhanceModal(); updateUI(); autoSave();
+    openEnhanceModal(); updateUI(); autoSave();
 }
-
 function openAltarModal() {
     let html = `<h2>🏺 영구 왕국 제단</h2><p>보유 훈장: <strong style="color:var(--accent-red);">${player.honor}개</strong> / 골드: <strong style="color:var(--accent-gold);">${player.gold} G</strong></p>`;
     const upgrades = [
@@ -2572,7 +2559,7 @@ window.game = {
     openBulletinBoard, refreshBulletinBoard, acceptSubQuest, abandonSubQuest, completeSubQuest,
     useReturnStoneQuick, useReturnStoneExploration, exploreForward, resolveFork,
     triggerBossCombat, playerAttack, playerSkill, playerUltimate, tryFlee,
-    sellAllGear, sellItem, sellAllTrash, openEnhanceModal, confirmEnhance, executeEnhance,
+    sellAllGear, sellItem, sellAllTrash, openEnhanceModal, executeEnhance,
     buyBaseGear, buyPotion, buyTalisman, buyStone,
     openRiftMenu, adjustRiftFloor, startRift, promptNextRiftExploration, triggerRiftCombat, escapeRift, retryRiftFloor, openSigilRelicSelect, openSigilOptionSelect, applySigil
 };
