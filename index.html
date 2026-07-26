@@ -444,7 +444,7 @@ const PASSIVE_SKILLS = {
     "마법사": { name: "마력 응축", desc: "주문력(마법 공격력)이 15% 증가합니다." },
     "원소술사": { name: "원소 메아리", desc: "스킬 사용 시 20% 확률로 MP 소모를 무시하며, 주문력이 추가 15% 증가합니다." },
     "흑마법사": { name: "영혼 스킬", desc: "일반 스킬 사용 시 15% 확률로 MP 소모 없이 스킬이 한 번 더 발동합니다." },
-    "도적": { name: "그림자 걸음", desc: "회피율이 8% 증가합니다." },
+    "도적": { name: "치명적인 안개", desc: "도적 계열 직업에 한하여 치명타 확률이 100%로 설정됩니다. 초과분은 치명타 피해량으로 전환되어 상승합니다." },
     "암살자": { name: "치명의 독", desc: "치명타 피해량이 30% 증가합니다." },
     "의적": { name: "약탈의 손놀림", desc: "전투 승리 시 획득하는 골드가 25% 증가합니다." }
 };
@@ -670,16 +670,27 @@ function getPlayerMatk() {
     return Math.floor(base * mult);
 }
 
-function getPlayerCrit() {
+function getRawCrit() {
     let altarBonus = player.altarLevel ? (player.altarLevel.crit || 0) * 0.5 : 0;
     let gearCrit = 0; EQUIPMENT_SLOTS.forEach(s => { let eq = player.equipment[s]; if (eq && eq.options) eq.options.forEach(o => { if (o.type === 'crit') gearCrit += o.val; }); });
     let base = 5 + Math.floor(getFinalDex() * 0.8) + altarBonus + gearCrit;
     if (player.talents && player.talents.offense >= 1) base += 5;
-    return Math.min(85, base);
+    return base;
 }
+
+function getPlayerCrit() {
+    let isRogueClass = ['도적', '암살자', '의적'].includes(player.job);
+    if (isRogueClass && player.tier >= 1) {
+        return 100;
+    }
+    return Math.min(85, getRawCrit());
+}
+
 function getPlayerEvade() {
     let base = 5 + Math.floor(getFinalDex() * 0.4);
-    if (['도적','암살자','의적'].includes(player.job) && player.tier >= 1) base += 8;
+    if (['도적','암살자','의적'].includes(player.job) && player.tier >= 1) {
+        // 도적 계열 1차 패시브가 치명타 100%로 변경되었으므로 회피율 보너스는 제거하거나 유지할 수 있으나 요청사항에 따라 치명타 위주로 적용
+    }
     if (isRift && currentRiftDebuff === '중력 왜곡') base -= 15;
     if (player.talents && player.talents.chaos >= 2) base += 5;
     return Math.min(50, Math.max(0, base));
@@ -691,6 +702,13 @@ function getPlayerAcc() {
 }
 function getPlayerCritDmg() {
     let base = 150 + Math.floor(getFinalStr() * 0.2);
+    let isRogueClass = ['도적', '암살자', '의적'].includes(player.job);
+    if (isRogueClass && player.tier >= 1) {
+        let raw = getRawCrit();
+        if (raw > 100) {
+            base += (raw - 100);
+        }
+    }
     if (player.job === '암살자') base += 30; 
     base += getSigilBonus('critDmg'); 
     if (player.talents && player.talents.offense >= 3) base += 20;
@@ -740,7 +758,7 @@ const HIT_FLAVORS = {
     glance: ["검날이 상대의 단단한 비늘(갑옷)을 아슬아슬하게 스쳤다. 타격이 다소 깊지 못했다.", "적의 반사적인 회피 동작에 허를 찔렸다. 중심이 무너지며 위력이 반감되었다."],
     normal: ["정확한 각도로 적의 급소를 향해 묵직한 충격을 밀어 넣었다.", "방어의 허를 파고든 정직한 일격이 상대의 육체에 깊은 타상을 남겼다."],
     critical: ["상대의 움직임이 멈춘 찰나의 순간, 방어의 공백을 완벽하게 관통하는 예리한 일격이 터졌다!", "예측을 허불하는 각도에서 날아간 공격이 적의 치명적인 약점을 정확히 후벼팠다!"],
-    critExecute: ["뇌전이 치듯 순식간에 시야가 번쩍였다! 적의 갑옷이 박살 나며 시야를 붉게 물들인다!", "뼈와 살을 파고드는 끔찍한 충격! 완벽하고 잔혹한 급소 강타가 작렬했다!"]
+    critExecute: ["뇌전이 치듯 순식간에 시야가 번쩍였다! 적의 갑옷이 박살 나며 시야를 붉게 물든인다!", "뼈와 살을 파고드는 끔찍한 충격! 완벽하고 잔혹한 급소 강타가 작렬했다!"]
 };
 function getRandomFlavor(type) { let arr = HIT_FLAVORS[type]; return arr[Math.floor(Math.random() * arr.length)]; }
 
