@@ -1668,8 +1668,8 @@ async function winCombat() {
         let container = document.getElementById("action-container");
         container.innerHTML = `
             <div class="full-width" style="text-align:center; color:#ff77ff; margin-bottom:6px; font-weight:bold;">${currentClearedFloor}층 클리어 완료!</div>
-            <button class="btn-choice stat-alert" style="justify-content:center;" onclick="window.game.retryRiftFloor(${currentClearedFloor})"><i class="ra ra-perspective-dice-six" style="color:#ff77ff;"></i> 재도전 (${currentClearedFloor}층)</button>
             <button class="btn-choice" style="justify-content:center;" onclick="window.game.promptNextRiftExploration()">다음 층(${riftFloor}층)으로 전진</button>
+            <button class="btn-choice stat-alert" style="justify-content:center;" onclick="window.game.retryRiftFloor(${currentClearedFloor})"><i class="ra ra-perspective-dice-six" style="color:#ff77ff;"></i> 재도전 (${currentClearedFloor}층)</button>
             <button class="btn-choice full-width" style="justify-content:center;" onclick="window.game.escapeRift()"><i class="ra ra-castle-flag"></i> 거점으로 귀환 (저장)</button>
         `;
         autoSave(); return;
