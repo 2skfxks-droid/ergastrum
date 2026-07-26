@@ -319,10 +319,10 @@ let combatTurnCount = 0;
 
 // 룬 및 소켓 시스템 데이터 정의
 const RUNE_TYPES = [
-    { type: 'atk', name: '파괴의 룬', stat: 'atk', min: 3, max: 15, unit: '' },
-    { type: 'crit', name: '예지의 룬', stat: 'crit', min: 0.5, max: 3.0, unit: '%' },
-    { type: 'vamp', name: '흡혈의 룬', stat: 'vampire', min: 0.2, max: 1.0, unit: '%' },
-    { type: 'hp', name: '수호의 룬', stat: 'hp', min: 15, max: 100, unit: '' }
+    { type: 'atk', name: '파괴의 룬', stat: 'atk', statName: '물/마 공격력', min: 3, max: 15, unit: '' },
+    { type: 'crit', name: '예지의 룬', stat: 'crit', statName: '치명타 확률', min: 0.5, max: 3.0, unit: '%' },
+    { type: 'vamp', name: '흡혈의 룬', stat: 'vampire', statName: '흡혈', min: 0.2, max: 1.0, unit: '%' },
+    { type: 'hp', name: '수호의 룬', stat: 'hp', statName: '최대 체력', min: 15, max: 100, unit: '' }
 ];
 const RUNE_GRADES = ["일반", "정예", "희귀", "영웅", "전설"];
 
@@ -330,6 +330,7 @@ function generateRune(forcedGrade = null) {
     let typeObj = RUNE_TYPES[Math.floor(Math.random() * RUNE_TYPES.length)];
     let gradeRoll = Math.random();
     let grade = "일반";
+    
     if (forcedGrade) grade = forcedGrade;
     else {
         if (gradeRoll < 0.03) grade = "전설";
@@ -338,15 +339,19 @@ function generateRune(forcedGrade = null) {
         else if (gradeRoll < 0.70) grade = "정예";
         else grade = "일반";
     }
+    
     let gradeIdx = RUNE_GRADES.indexOf(grade);
     let rangeSpan = typeObj.max - typeObj.min;
-    let gradeBonusRatio = (gradeIdx / (RUNE_GRADES.length - 1)) * 0.4;
-    let randomRatio = Math.random() * 0.6 + gradeBonusRatio; 
+    
+    // 수정된 부분: 등급별로 능력치 구간을 완벽하게 20%씩 분할합니다.
+    // 일반(0~20%), 정예(20~40%), 희귀(40~60%), 영웅(60~80%), 전설(80~100%)
+    let minRatio = gradeIdx * 0.2; 
+    let randomRatio = minRatio + (Math.random() * 0.2); 
     randomRatio = Math.min(1.0, randomRatio);
 
     let rawVal = typeObj.min + (rangeSpan * randomRatio);
     let val = (typeObj.stat === 'crit' || typeObj.stat === 'vampire') ? parseFloat(rawVal.toFixed(1)) : Math.floor(rawVal);
-    let label = `${typeObj.name.replace('의 룬','')} +${val}${typeObj.unit}`;
+    let label = `${typeObj.statName} +${val}${typeObj.unit}`;
 
     return {
         name: `${grade} ${typeObj.name}`,
