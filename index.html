@@ -444,7 +444,7 @@ const PASSIVE_SKILLS = {
     "마법사": { name: "마력 응축", desc: "주문력(마법 공격력)이 15% 증가합니다." },
     "원소술사": { name: "원소 메아리", desc: "스킬 사용 시 20% 확률로 MP 소모를 무시하며, 주문력이 추가 15% 증가합니다." },
     "흑마법사": { name: "영혼 스킬", desc: "일반 스킬 사용 시 15% 확률로 MP 소모 없이 스킬이 한 번 더 발동합니다." },
-    "도적": { name: "치명적인 안개", desc: "도적 계열 직업에 한하여 치명타 확률이 100%로 설정됩니다. 초과분은 치명타 피해량으로 전환되어 상승합니다." },
+    "도적": { name: "치명적인 안개", desc: "도적 계열 직업에 한하여 치명타 확률이 최대 100%로 설정됩니다. 초과분은 치명타 피해량으로 전환되어 상승합니다." },
     "암살자": { name: "치명의 독", desc: "치명타 피해량이 30% 증가합니다." },
     "의적": { name: "약탈의 손놀림", desc: "전투 승리 시 획득하는 골드가 25% 증가합니다." }
 };
@@ -679,17 +679,18 @@ function getRawCrit() {
 }
 
 function getPlayerCrit() {
+    let raw = getRawCrit();
     let isRogueClass = ['도적', '암살자', '의적'].includes(player.job);
     if (isRogueClass && player.tier >= 1) {
-        return 100;
+        return Math.min(100, raw);
     }
-    return Math.min(85, getRawCrit());
+    return Math.min(85, raw);
 }
 
 function getPlayerEvade() {
     let base = 5 + Math.floor(getFinalDex() * 0.4);
     if (['도적','암살자','의적'].includes(player.job) && player.tier >= 1) {
-        // 도적 계열 1차 패시브가 치명타 100%로 변경되었으므로 회피율 보너스는 제거하거나 유지할 수 있으나 요청사항에 따라 치명타 위주로 적용
+        // 도적 계열 1차 패시브 개편에 따라 회피율 보너스 대신 치명타 100% 상한 및 피해량 전환 적용
     }
     if (isRift && currentRiftDebuff === '중력 왜곡') base -= 15;
     if (player.talents && player.talents.chaos >= 2) base += 5;
@@ -2537,7 +2538,7 @@ function checkLevelUp() {
                 logNarrative(`🌟 깨달음을 얻었습니다! [특성 포인트(TP) 1 획득]`, "reward", "system"); 
             }
         }
-        logNarrative(`🎉 레벨 업! Lv.${player.level} 달성! (스탯 포인트 +5)`, "reward", "system");
+        logNarrative(`🎉 레벨 업! Lv.${player.level} 달성! (스탯 포인트 +3)`, "reward", "system");
     }
     if (leveledUp) { player.hp = getMaxHp(); player.mp = getMaxMp(); updateUI(); }
 }
