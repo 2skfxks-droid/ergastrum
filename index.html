@@ -443,7 +443,7 @@ const PASSIVE_SKILLS = {
     "광전사": { name: "끓어오르는 피", desc: "체력이 80% 이하부터 30%까지 낮아질수록 공격력이 최대 80% 증가합니다." },
     "마법사": { name: "마력 응축", desc: "주문력(마법 공격력)이 15% 증가합니다." },
     "원소술사": { name: "원소 메아리", desc: "스킬 사용 시 20% 확률로 MP 소모를 무시하며, 주문력이 추가 15% 증가합니다." },
-    "흑마법사": { name: "영혼 스킬", desc: "일반 스킬 사용 시 15% 확률로 MP 소모 없이 스킬이 한 번 더 발동합니다." },
+    "흑마법사": { name: "영혼 스킬", desc: "일반 스킬 사용 시 8% 확률로 MP 소모 없이 스킬이 한 번 더 발동합니다." },
     "도적": { name: "치명적인 안개", desc: "도적 계열 직업에 한하여 치명타 확률이 최대 100%로 설정됩니다. 초과분의 30%는 치명타 피해량으로 전환됩니다." },
     "암살자": { name: "치명의 독", desc: "치명타 피해량이 30% 증가합니다." },
     "의적": { name: "약탈의 손놀림", desc: "전투 승리 시 획득하는 골드가 25% 증가합니다." }
@@ -744,13 +744,12 @@ const JOB_SKILLS = {
     "성기사": { name: "신성한 심판", cost: 20, type: "holy", icon: "ra-sun-radiations", calcDamage: (p, enemy) => { return { base: getPlayerAtk() * 1.4 + (getFinalStr() * 1.5) + (getFinalCon() * 2.0), isMagic: false }; } },
     "광전사": { name: "혈풍참", cost: 15, type: "physical", icon: "ra-bleeding-eye", calcDamage: (p, enemy) => { let cost = Math.floor(getMaxHp() * 0.08); if (p.hp <= cost) { p._tempLog = `⚠️ 체력 부족!`; p.hp = 1; return { base: Math.max(1, getPlayerAtk() - (enemy.def * 0.2)), isMagic: false }; } p.hp -= cost; return { base: getPlayerAtk() * 2.2 + (getFinalStr() * 3.0) + (cost * 2), isMagic: false }; } },
     "마법사": { name: "화염구", cost: 15, type: "magic", icon: "ra-fire", calcDamage: (p, enemy) => { return { base: getPlayerMatk() * 1.8 + getFinalInt() * 2.2, isMagic: true }; } },
-    "원소술사": { name: "메테오 스트라이크", cost: 30, type: "magic", icon: "ra-burning-meteor", calcDamage: (p, enemy) => { return { base: getPlayerMatk() * 2.8 + getFinalInt() * 3.5, isMagic: true }; } },
-    "흑마법사": { name: "생명력 흡수 저주", cost: 20, type: "magic", icon: "ra-skull", calcDamage: (p, enemy) => { let base = getPlayerMatk() * 1.6 + getFinalInt() * 2.5; let drain = Math.floor(base * 0.35); p.hp = Math.min(getMaxHp(), p.hp + drain); p._tempLog = `🩸 체력 ${drain} 흡수!`; return { base, isMagic: true }; } },
+    "원소술사": { name: "메테오 스트라이크", cost: 30, type: "magic", icon: "ra-burning-meteor", calcDamage: (p, enemy) => { return { base: getPlayerMatk() * 2.0 + getFinalInt() * 1.2, isMagic: true }; } },
+    "흑마법사": { name: "생명력 흡수 저주", cost: 20, type: "magic", icon: "ra-skull", calcDamage: (p, enemy) => { let base = getPlayerMatk() * 1.6 + getFinalInt() * 2.5; let drain = Math.floor(base * 0.20); p.hp = Math.min(getMaxHp(), p.hp + drain); p._tempLog = `🩸 체력 ${drain} 흡수!`; return { base, isMagic: true }; } },
     "도적": { name: "기습 급소 베기", cost: 12, type: "physical", icon: "ra-daggers", calcDamage: (p, enemy) => { return { base: getPlayerAtk() * 1.6 + getFinalDex() * 2.8, isMagic: false }; } },
     "암살자": { name: "칠흑의 멸살검", cost: 22, type: "physical", icon: "ra-dripping-knife", calcDamage: (p, enemy) => { return { base: getPlayerAtk() * 2.0 + getFinalDex() * 4.0, isMagic: false }; } },
     "의적": { name: "연막 환영참", cost: 18, type: "physical", icon: "ra-fast-backward-goggles", calcDamage: (p, enemy) => { return { base: getPlayerAtk() * 1.7 + getFinalDex() * 2.5 + getFinalInt() * 1.5, isMagic: false }; } }
 };
-
 const EQUIPMENT_SLOTS = ["머리", "상의", "바지", "신발", "장갑", "주무기", "보조무기", "목걸이", "반지1", "반지2"];
 const EQUIPMENT_GRADES = ["일반", "정예", "희귀", "영웅", "전설", "균열"];
 const GEAR_TYPES = {
@@ -1402,7 +1401,7 @@ async function playerSkill() {
         }
         else await appendLogAsync(`✨ 스킬 《${skill.name}》 구사!`, 'system', 'player');
 
-        let castCount = (player.job === '흑마법사' && player.tier >= 2 && Math.random() < 0.15) ? 2 : 1;
+        let castCount = (player.job === '흑마법사' && player.tier >= 2 && Math.random() < 0.08) ? 2 : 1;
         for (let i = 0; i < castCount; i++) {
             if (i === 1) { await delay(200); await appendLogAsync(`💀 <span style="color:#c485e0; font-weight:bold;">[영혼 스킬]</span> 흑마법의 기운이 스킬을 한 번 더 발동시킵니다!`, 'reward', 'player'); }
             triggerEnemyPanelShake(); 
