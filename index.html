@@ -295,7 +295,6 @@
 </div>
 
 <div id="modal-overlay" class="modal-overlay hidden"><div class="modal-box" id="modal-content"></div></div>
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -317,6 +316,63 @@ let currentUserId = null;
 let chatMessages = [];
 let chatUnsubscribe = null;
 let combatTurnCount = 0; 
+
+// 룬 및 소켓 시스템 데이터 정의
+const RUNE_TYPES = [
+    { type: 'atk', name: '파괴의 룬', stat: 'atk', min: 3, max: 15, unit: '' },
+    { type: 'crit', name: '예지의 룬', stat: 'crit', min: 0.5, max: 3.0, unit: '%' },
+    { type: 'vamp', name: '흡혈의 룬', stat: 'vampire', min: 0.2, max: 1.0, unit: '%' },
+    { type: 'hp', name: '수호의 룬', stat: 'hp', min: 15, max: 100, unit: '' }
+];
+const RUNE_GRADES = ["일반", "정예", "희귀", "영웅", "전설"];
+
+function generateRune(forcedGrade = null) {
+    let typeObj = RUNE_TYPES[Math.floor(Math.random() * RUNE_TYPES.length)];
+    let gradeRoll = Math.random();
+    let grade = "일반";
+    if (forcedGrade) grade = forcedGrade;
+    else {
+        if (gradeRoll < 0.03) grade = "전설";
+        else if (gradeRoll < 0.12) grade = "영웅";
+        else if (gradeRoll < 0.35) grade = "희귀";
+        else if (gradeRoll < 0.70) grade = "정예";
+        else grade = "일반";
+    }
+    let gradeIdx = RUNE_GRADES.indexOf(grade);
+    let rangeSpan = typeObj.max - typeObj.min;
+    let gradeBonusRatio = (gradeIdx / (RUNE_GRADES.length - 1)) * 0.4;
+    let randomRatio = Math.random() * 0.6 + gradeBonusRatio; 
+    randomRatio = Math.min(1.0, randomRatio);
+
+    let rawVal = typeObj.min + (rangeSpan * randomRatio);
+    let val = (typeObj.stat === 'crit' || typeObj.stat === 'vampire') ? parseFloat(rawVal.toFixed(1)) : Math.floor(rawVal);
+    let label = `${typeObj.name.replace('의 룬','')} +${val}${typeObj.unit}`;
+
+    return {
+        name: `${grade} ${typeObj.name}`,
+        type: 'rune',
+        runeType: typeObj.type,
+        stat: typeObj.stat,
+        val: val,
+        grade: grade,
+        label: label,
+        count: 1,
+        isLocked: false
+    };
+}
+
+function getRuneBonus(statName) {
+    let total = 0;
+    EQUIPMENT_SLOTS.forEach(slot => {
+        let eq = player.equipment[slot];
+        if (eq && eq.sockets) {
+            eq.sockets.forEach(rune => {
+                if (rune.stat === statName) total += rune.val;
+            });
+        }
+    });
+    return total;
+}
 
 const i18n_intro = {
     ko: { title: "《에르가스트룸: 왕국의 맹세》", desc: "나만의 아이디와 비밀번호로 로그인하여 어느 컴퓨터에서나 모험을 이어가세요.", placeholderId: "사용할 아이디 (예: hero123)", placeholderPw: "비밀번호", startBtn: "계정 생성 / 로그인" },
@@ -425,16 +481,16 @@ function startAdventure() {
 }
 
 const CHAPTERS = [
-    { id: 1, name: "가시넝쿨 숲", hub: "바람노을 성채", boss: "식인 곰 '브루투스'", hp: 1200, lv: 1, expandedLore: "한때 왕국의 목재를 책임지던 풍요로운 숲은 썩은 송진 냄새가 진동하는 죽음의 땅이 되었습니다. 마장기에 감염된 가시넝쿨들은 길을 잃은 자들의 피를 빨아먹고 자라납니다. 곳곳에 흩어진 부서진 갑옷과 뜯겨나간 깃발은 앞서 파견된 정찰대원들의 비참한 최후를 증명합니다. 첫 번째 임무는 숲의 생태계를 지배하며 길목을 틀어막고 있는 거대한 흉물, 식인 곰 '브루투스'를 토벌하여 잃어버린 보급로를 되찾는 것입니다." },
-    { id: 2, name: "통곡의 지하 미로", hub: "바람노을 성채", boss: "저주받은 백작 '페르디난드'", hp: 2800, lv: 5, expandedLore: "태양 빛이 닿지 않는 축축한 지하로 내려가자, 차가운 벽면에 얼어붙은 핏자국이 당신을 맞이합니다. 영지민들을 굶주림에서 구하고자 영원한 생명을 탐구하던 페르디난드 백작은, 결국 심연의 저주에 잡아먹혀 이성을 잃은 괴물이 되었습니다. 칠흑 같은 미로의 벽을 타고 들려오는 백작의 기괴한 울음소리가 뼈를 울립니다. 원정대를 옥죄어오는 이 끔찍한 통곡을 멎게 하고, 백작의 안식을 찾아주어야 합니다." },
-    { id: 3, name: "잿더미 고성", hub: "바람노을 성채", boss: "화염의 기사 '인포서'", hp: 5500, lv: 10, expandedLore: "한때 왕국의 위엄을 자랑하며 철벽같은 방어를 자랑하던 요새는 이제 불타버린 잿더미로 변해버렸습니다. 타락한 기사들의 망령만이 서성이는 이 지옥도 중심에는, 심연의 불꽃에 영혼을 바치고 영원토록 고성을 지키는 화염의 기사 '인포서'가 자리잡고 있습니다. 뜨거운 열기와 흩날리는 재를 뚫고, 이 저주받은 요새의 숨통을 끊어내십시오." },
-    { id: 4, name: "용혈의 절벽", hub: "별빛 연금학회 요새", boss: "붉은 날개 '레드렉스'", hp: 12000, lv: 15, expandedLore: "하늘마저 불길하게 붉게 물든 험준한 절벽 지대. 과거 거대한 고대 드래곤이 추락해 그 피가 스며든 이 땅은 이제 불타는 비늘을 가진 돌연변이 괴수들의 둥지가 되었습니다. 정상을 향하는 길목마다 끓어오르는 용암과 매복한 마물들이 도사리고 있으며, 절벽 끝에는 탐욕스러운 붉은 날개 '레드렉스'가 원정대의 피와 살을 노려보고 있습니다." },
-    { id: 5, name: "서리 요새", hub: "별빛 연금학회 요새", boss: "시간의 간수 '크로노스'", hp: 22000, lv: 20, expandedLore: "뼛속까지 시리다 못해 흐르는 시간마저 얼어붙게 만드는 극저온의 성채. 한때 마법사들의 피난처였던 이곳은 통제력을 잃은 냉기 마법에 의해 영원한 겨울에 갇혔습니다. 성채의 가장 깊은 곳, 과거와 미래를 빼앗긴 채 원혼들을 거느리고 있는 시간의 간수 '크로노스'를 파괴해야만 원정대는 다음 여정으로 나아갈 수 있습니다." },
-    { id: 6, name: "연금술 지하 연구소", hub: "별빛 연금학회 요새", boss: "연금의 결정체 '원형체 0호'", hp: 38000, lv: 25, expandedLore: "별빛 연금학회의 지하 깊숙한 곳에 은폐된 금지된 실험 구역. 생명 창조라는 신의 영역에 도전했다가 실패한 괴기스러운 생명체들이 유리관을 깨고 쏟아져 나왔습니다. 악취를 풍기는 부식성 액체가 쉴 새 없이 흘러내리는 온실의 끝에는, 모든 실험의 실패와 광기가 뭉쳐진 끔찍한 결정체 '원형체 0호'가 살육을 갈망하며 기다리고 있습니다." },
-    { id: 7, name: "황량한 심연", hub: "영원원정대 방주", boss: "심연의 군주 '벨리알'", hp: 60000, lv: 30, expandedLore: "빛조차 닿지 않는 바닥 없는 지하 공간. 원정대 방주가 드디어 도달한 이 심연의 초입은 세상의 모든 절망이 가라앉아 형성된 늪입니다. 칠흑 같은 어둠 속에서 세상의 종말을 노래하며 군세를 이끄는 심연의 군주 '벨리알'이 영원원정대의 앞길을 가로막습니다. 한 치 앞도 보이지 않는 공포 속에서 살아남으십시오." },
-    { id: 8, name: "신의 묘지", hub: "영원원정대 방주", boss: "전신(戰神)의 환영 '아레스의 거울'", hp: 95000, lv: 35, expandedLore: "까마득한 옛날, 신들의 전쟁 끝에 쓰러진 거대한 시체들이 산처럼 쌓여 잠든 잊혀진 무덤. 썩지 않는 신성한 육신에서 흘러나온 마력이 기형적인 생태계를 만들었습니다. 가장 거대한 무덤 앞, 진짜 신보다 더 차가운 살기를 뿜어내며 끝없는 투기를 내뿜는 전신의 환영 '아레스의 거울'을 쓰러뜨려 당신의 무위를 증명해야 합니다." },
-    { id: 9, name: "거울의 방", hub: "영원원정대 방주", boss: "또 다른 나 '도플갱어'", hp: 120000, lv: 40, expandedLore: "수천, 수만 개의 거울이 사방을 기괴하게 비추는 환영의 공간. 이곳에서는 당신의 가장 깊은 두려움, 후회, 그리고 추악한 욕망이 형체를 갖추고 덤벼듭니다. 거울 너머에서 걸어 나온 또 다른 나, '도플갱어'는 당신의 모든 기술과 약점을 꿰뚫고 있습니다. 자신과의 처절한 싸움에서 승리해야만 최종 성역으로 향하는 문이 열립니다." },
-    { id: 10, name: "태초의 성역", hub: "영원원정대 방주", boss: "태초의 혼돈 '카오스'", hp: 200000, lv: 50, expandedLore: "모든 것의 시작이자, 심연이 비롯된 종말의 성역. 기괴하게 뒤틀린 시공간 속에서 세계의 태엽을 거꾸로 돌리려는 태초의 혼돈이 그 본모습을 드러냅니다. 더 이상 물러설 곳은 없습니다. 에르가스트룸 왕국의 맹세를 가슴에 품고, 태초의 혼돈 '카오스'를 잠재워 멸망해가는 세계를 구원할 최후의 일격을 날리십시오." }
+    { id: 1, name: "가시넝쿨 숲", hub: "바람노을 성채", boss: "식인 곰 '브루투스'", hp: 1200, lv: 1 },
+    { id: 2, name: "통곡의 지하 미로", hub: "바람노을 성채", boss: "저주받은 백작 '페르디난드'", hp: 2800, lv: 5 },
+    { id: 3, name: "잿더미 고성", hub: "바람노을 성채", boss: "화염의 기사 '인포서'", hp: 5500, lv: 10 },
+    { id: 4, name: "용혈의 절벽", hub: "별빛 연금학회 요새", boss: "붉은 날개 '레드렉스'", hp: 12000, lv: 15 },
+    { id: 5, name: "서리 요새", hub: "별빛 연금학회 요새", boss: "시간의 간수 '크로노스'", hp: 22000, lv: 20 },
+    { id: 6, name: "연금술 지하 연구소", hub: "별빛 연금학회 요새", boss: "연금의 결정체 '원형체 0호'", hp: 38000, lv: 25 },
+    { id: 7, name: "황량한 심연", hub: "영원원정대 방주", boss: "심연의 군주 '벨리알'", hp: 60000, lv: 30 },
+    { id: 8, name: "신의 묘지", hub: "영원원정대 방주", boss: "전신(戰神)의 환영 '아레스의 거울'", hp: 95000, lv: 35 },
+    { id: 9, name: "거울의 방", hub: "영원원정대 방주", boss: "또 다른 나 '도플갱어'", hp: 120000, lv: 40 },
+    { id: 10, name: "태초의 성역", hub: "영원원정대 방주", boss: "태초의 혼돈 '카오스'", hp: 200000, lv: 50 }
 ];
 
 const PASSIVE_SKILLS = {
@@ -483,7 +539,6 @@ function applyStatus(target, id, duration) {
     else target.statuses.push({ id, duration });
 }
 
-// 📌 플로팅 데미지 폰트 텍스트 생성 함수
 function showFloatingText(text, type = 'damage', isPlayerSide = false) {
     const targetBox = isPlayerSide ? document.getElementById('player-status-panel') : document.getElementById('enemy-panel-box');
     if (!targetBox) return;
@@ -635,7 +690,7 @@ function getFinalCon() {
 
 function getMaxHp() {
     let altarBonus = player.altarLevel ? (player.altarLevel.hp || 0) * 15 : 0;
-    let base = 75 + (getFinalCon() * 5) + altarBonus + ((player.level - 1) * 15);
+    let base = 75 + (getFinalCon() * 5) + altarBonus + ((player.level - 1) * 15) + getRuneBonus('hp');
     if (player.talents && player.talents.defense >= 1) base = Math.floor(base * 1.15);
     return base;
 }
@@ -654,7 +709,7 @@ function getPlayerDef() {
 
 function getPlayerAtk() {
     let altarBonus = player.altarLevel ? (player.altarLevel.atk || 0) * 2 : 0;
-    let base = (getFinalStr() * 2) + altarBonus + ((player.level - 1) * 3);
+    let base = (getFinalStr() * 2) + altarBonus + ((player.level - 1) * 3) + getRuneBonus('atk');
     EQUIPMENT_SLOTS.forEach(s => { let eq = player.equipment[s]; if (eq && eq.atk) base += eq.atk; });
     
     if (player.job === '성기사' && player.tier >= 2) { base += Math.floor(getPlayerDef() * 0.15); }
@@ -667,7 +722,7 @@ function getPlayerAtk() {
 
 function getPlayerMatk() {
     let altarMatk = player.altarLevel ? (player.altarLevel.matk || 0) * 2 : 0;
-    let base = (getFinalInt() * 2.2) + altarMatk + ((player.level - 1) * 3);
+    let base = (getFinalInt() * 2.2) + altarMatk + ((player.level - 1) * 3) + getRuneBonus('atk');
     EQUIPMENT_SLOTS.forEach(s => { let eq = player.equipment[s]; if (eq && eq.matk) base += eq.matk; });
     
     let mult = 1.0;
@@ -679,8 +734,7 @@ function getPlayerMatk() {
 function getRawCrit() {
     let altarBonus = player.altarLevel ? (player.altarLevel.crit || 0) * 0.5 : 0;
     let gearCrit = 0; EQUIPMENT_SLOTS.forEach(s => { let eq = player.equipment[s]; if (eq && eq.options) eq.options.forEach(o => { if (o.type === 'crit') gearCrit += o.val; }); });
-    // 밸런스 패치: DEX당 치명타 상승 계수를 낮춤 (기존 0.8 -> 0.4)
-    let base = 5 + Math.floor(getFinalDex() * 0.4) + altarBonus + gearCrit;
+    let base = 5 + Math.floor(getFinalDex() * 0.4) + altarBonus + gearCrit + getRuneBonus('crit');
     if (player.talents && player.talents.offense >= 1) base += 5;
     return base;
 }
@@ -711,7 +765,6 @@ function getPlayerCritDmg() {
     if (isRogueClass && player.tier >= 1) {
         let raw = getRawCrit();
         if (raw > 100) {
-            // 밸런스 패치: 초과분 전환율을 1:1에서 30%(0.3)로 하향 조정
             base += Math.floor((raw - 100) * 0.3);
         }
     }
@@ -721,7 +774,9 @@ function getPlayerCritDmg() {
     return base;
 }
 function getAccessoryEffect(effectType) {
-    let total = 0; ["목걸이", "반지1", "반지2"].forEach(slot => { let eq = player.equipment[slot]; if (eq && eq.effect && eq.effect.type === effectType) total += eq.effect.val; }); return total;
+    let total = 0; ["목걸이", "반지1", "반지2"].forEach(slot => { let eq = player.equipment[slot]; if (eq && eq.effect && eq.effect.type === effectType) total += eq.effect.val; }); 
+    if (effectType === 'vampire') total += getRuneBonus('vampire');
+    return total;
 }
 function getStoneCount(subType) {
     let count = 0; player.inventory.forEach(i => { if (i.type === 'stone' && i.subType === subType) count += (i.count || 1); }); return count;
@@ -780,7 +835,7 @@ function setCombatButtonsDisabled(disabled) { const combatButtons = document.que
 
 function addItemToInventory(item) {
     if (!item.count) item.count = 1; if (item.isLocked === undefined) item.isLocked = false;
-    if (['potion', 'stone', 'return_stone', 'return_talisman', 'trash', 'sigil'].includes(item.type)) {
+    if (['potion', 'stone', 'return_stone', 'return_talisman', 'trash', 'sigil', 'rune'].includes(item.type)) {
         let existing = player.inventory.find(i => i.name === item.name && i.type === item.type);
         if (existing) { existing.count += item.count; updateUI(); return true; }
     }
@@ -848,67 +903,11 @@ function applyLoadedData(saveData) {
     if(!player.talents) player.talents = { offense: 0, defense: 0, chaos: 0 };
     if(!player.statuses) player.statuses = [];
     
-    if (!player.tpUpdated) {
-        if (!player.expBalancedToV2) {
-            let totalExp = player.exp;
-            let tempExpForLevel = 100;
-            for (let i = 1; i < player.level; i++) {
-                totalExp += tempExpForLevel;
-                tempExpForLevel = Math.floor(tempExpForLevel * 1.35);
-            }
-
-            let newLevel = 1;
-            let newMaxExp = 100;
-            
-            while (totalExp >= newMaxExp) {
-                totalExp -= newMaxExp;
-                newLevel++;
-                newMaxExp = Math.floor(newMaxExp * 1.20);
-            }
-
-            let levelDiff = newLevel - player.level;
-            if (levelDiff > 0) {
-                player.level = newLevel;
-                player.statPoints += (levelDiff * 3);
-                
-                let spentTp = (player.talents.offense || 0) + (player.talents.defense || 0) + (player.talents.chaos || 0);
-                let targetTotalTp = 0;
-                for (let l = 5; l <= player.level; l += 2) {
-                    targetTotalTp++;
-                }
-                targetTotalTp = Math.min(12, targetTotalTp);
-                let earnedTp = Math.max(0, targetTotalTp - spentTp);
-                if (earnedTp > 0) {
-                    player.tp = (player.tp || 0) + earnedTp;
-                }
-            }
-
-            player.maxExp = newMaxExp;
-            player.exp = totalExp;
-
-            setTimeout(() => {
-                alert(`[시스템 업데이트] 레벨업 경험치 요구치 완화(1.2배) 패치 적용!\n누적 경험치가 재조정되어 레벨이 [Lv.${player.level}]로 갱신되었습니다.`);
-            }, 1000);
-
-            player.expBalancedToV2 = true;
-        }
-
-        let expectedTotalTp = Math.max(0, Math.floor((player.level - 3) / 2));
-        let spentTp = player.talents.offense + player.talents.defense + player.talents.chaos;
-        let compensation = expectedTotalTp - spentTp;
-
-        if (compensation > 0) {
-            player.tp += compensation;
-            setTimeout(() => {
-                alert(`[시스템 업데이트] 영혼 각인소(특성) 시스템 추가 기념!\n기존 달성하신 레벨(Lv.${player.level})에 맞추어 특성 포인트(TP) ${compensation}개가 소급 지급되었습니다.`);
-            }, 800);
-        }
-        player.tpUpdated = true; 
-    }
-    
     const patchGear = (g) => {
         if (!g || g.type !== 'gear') return;
         let enh = g.enhance || 0; if (g.isLocked === undefined) g.isLocked = false;
+        if (g.maxSockets === undefined) g.maxSockets = 0;
+        if (!g.sockets) g.sockets = [];
         if (g.baseAtk === undefined && g.atk) g.baseAtk = Math.max(1, g.atk - (enh * 4));
         if (g.baseMatk === undefined && g.matk) g.baseMatk = Math.max(1, g.matk - (enh * 4));
         if (g.baseDef === undefined && g.def) g.baseDef = Math.max(1, g.def - (enh * 3));
@@ -1138,7 +1137,6 @@ function learnTalent(branch, tier) {
 
     player.tp--;
     player.talents[branch] = tier;
-    
     player.hp = Math.min(player.hp, getMaxHp());
     
     logNarrative(`🌟 영혼에 새로운 각인을 새겼습니다! [${TALENT_DATA[branch].nodes[tier-1].name}]`, "reward", "system");
@@ -1244,7 +1242,6 @@ function triggerRiftCombat(isBoss) {
     }
     
     player.statuses = []; 
-    
     let debuffDesc = "";
     if (currentRiftDebuff === '마력 고갈') debuffDesc = "매 턴 MP 15 감소";
     if (currentRiftDebuff === '피의 저주') debuffDesc = "모든 체력 회복 50% 감소";
@@ -1654,6 +1651,18 @@ async function winCombat() {
             await appendLogAsync(`✨ [균열 보상] 초월의 파편 ${fragCount}개 획득!`, "reward", "system");
         }
         
+        // 💡 [여기 추가] 균열 탑 클리어 시 일정 확률로 룬 드랍 (보스 50%, 일반 층 20%)
+        let runeDropChance = isBoss ? 0.50 : 0.20;
+        if (Math.random() < runeDropChance) {
+            let forcedGrade = null;
+            if (currentClearedFloor >= 20 && Math.random() < 0.3) forcedGrade = "영웅";
+            if (currentClearedFloor >= 35 && Math.random() < 0.3) forcedGrade = "전설";
+            
+            let newRune = generateRune(forcedGrade);
+            addItemToInventory(newRune);
+            await appendLogAsync(`💎 [균열 보상] <strong class="grade-${newRune.grade}">[${newRune.grade}] ${newRune.name} (${newRune.label})</strong> 획득!`, "reward", "system");
+        }
+
         let medalGain = isBoss ? 5 : 1; player.honor += medalGain;
         await appendLogAsync(`🏆 훈장 ${medalGain}개 획득!`, "reward", "system");
         
@@ -1667,7 +1676,7 @@ async function winCombat() {
         
         player.gold += riftGold; player.exp += riftExp;
         await appendLogAsync(`보상: 골드 +${riftGold}, 경험치 +${riftExp}`, "reward", "system");
-        checkLevelUp(); 
+        checkLevelUp();
 
         if (isBoss) {
             if (Math.random() < 0.15) {
@@ -1757,6 +1766,13 @@ function dropLoot(type, dropBonus) {
         if (itemObj) { addItemToInventory(itemObj); logNarrative(`🧪 소모품 획득: <span style="color:var(--accent-blue);">[소모품] ${itemObj.name}</span>`, "reward", "system"); }
     }
 
+    // 룬 드랍 추가 (15% 확률)
+    if (Math.random() < 0.15) {
+        let newRune = generateRune();
+        addItemToInventory(newRune);
+        logNarrative(`💎 룬 획득: <strong class="grade-${newRune.grade}">[${newRune.grade}] ${newRune.name} (${newRune.label})</strong>`, "reward", "system");
+    }
+
     let dropChance = (type === 'boss') ? 1.0 : (type === 'elite' ? 0.45 : 0.15 + dropBonus);
     if (Math.random() < dropChance) {
         let gradeRoll = Math.random(), grade = "일반";
@@ -1792,6 +1808,17 @@ function generateEquipment(slot, grade, chIdx) {
     } else { let names = GEAR_TYPES["방어구"]; gear.name = names[Math.floor(Math.random() * names.length)]; gear.def = Math.floor(statMultiplier * 0.8) + 3; }
     
     gear.baseAtk = gear.atk || 0; gear.baseMatk = gear.matk || 0; gear.baseDef = gear.def || 0;
+
+    // 💡 소켓 개수 무작위 설정 (0개 60%, 1개 25%, 2개 10%, 3개 5%)
+    let socketRoll = Math.random();
+    let maxSockets = 0;
+    if (socketRoll < 0.60) maxSockets = 0;
+    else if (socketRoll < 0.85) maxSockets = 1;
+    else if (socketRoll < 0.95) maxSockets = 2;
+    else maxSockets = 3;
+
+    gear.maxSockets = maxSockets;
+    gear.sockets = [];
 
     let optionCount = gradeIdx <= 1 ? 0 : (gradeIdx === 2 ? 1 : (gradeIdx === 3 ? 2 : (gradeIdx === 4 ? 3 : 4)));
     let possibleOptions = ['str', 'dex', 'int', 'con', 'crit', 'mp'];
@@ -1835,8 +1862,80 @@ function getItemIcon(item) {
     else if (item.type === 'return_talisman') iconClass = 'ra-scroll-unfurled';
     else if (item.type === 'trash') iconClass = 'ra-broken-bone';
     else if (item.type === 'sigil') iconClass = 'ra-flare'; 
-    let colorStyle = (item.type === 'stone' && item.subType === 'transcendent') || item.type === 'sigil' ? 'color:#ff77ff;' : '';
+    else if (item.type === 'rune') iconClass = 'ra-gem';
+    let colorStyle = (item.type === 'stone' && item.subType === 'transcendent') || item.type === 'sigil' || item.type === 'rune' ? 'color:#ff77ff;' : '';
     return `<i class="ra ${iconClass}" style="${colorStyle}"></i>`;
+}
+
+// 룬 소켓 관리 모달 및 함수
+function openRuneSocketModal(gearInvIdx) {
+    let gear = player.inventory[gearInvIdx];
+    if (!gear || gear.type !== 'gear') return;
+    if (gear.maxSockets === 0) { alert("이 장비에는 뚫린 소켓이 없습니다!"); return; }
+
+    let html = `<h2>룬 소켓 관리 ([${gear.name.length > 10 ? gear.name.substring(0, 10)+'..' : gear.name}])</h2>`;
+    html += `<p style="font-size:12px; color:var(--text-muted);">장착된 소켓: ${gear.sockets.length} / ${gear.maxSockets}</p>`;
+
+    html += `<h3>장착된 룬</h3>`;
+    if (!gear.sockets || gear.sockets.length === 0) {
+        html += `<p style="font-size:12px; color:var(--text-muted); margin-bottom:15px;">장착된 룬이 없습니다.</p>`;
+    } else {
+        gear.sockets.forEach((rune, rIdx) => {
+            html += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(20,18,16,0.8); border:1px solid var(--border-aged); padding:8px; margin-bottom:6px; border-radius:3px;">
+                <span class="grade-${rune.grade}" style="font-size:13px;">💎 [${rune.name}] (${rune.label})</span>
+                <button class="btn-mini" style="background:#4a2424;" onclick="window.game.removeRuneFromGear(${gearInvIdx}, ${rIdx})">제거</button>
+            </div>`;
+        });
+    }
+
+    if (gear.sockets.length < gear.maxSockets) {
+        html += `<h3>인벤토리의 룬 목록</h3>`;
+        let runesInInv = player.inventory.filter(i => i.type === 'rune');
+        if (runesInInv.length === 0) {
+            html += `<p style="font-size:12px; color:var(--text-muted);">장착할 수 있는 룬이 없습니다.</p>`;
+        } else {
+            runesInInv.forEach(rune => {
+                let rInvIdx = player.inventory.indexOf(rune);
+                html += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,12,10,0.8); border:1px solid var(--border-aged); padding:8px; margin-bottom:6px; border-radius:3px;">
+                    <span class="grade-${rune.grade}" style="font-size:13px;">💎 ${rune.name} (${rune.label})</span>
+                    <button class="btn-mini" style="background:#2a4a2a; border-color:#4a8a4a;" onclick="window.game.equipRuneToGear(${gearInvIdx}, ${rInvIdx})">장착</button>
+                </div>`;
+            });
+        }
+    }
+
+    html += `<button class="btn-choice full-width" style="justify-content:center; margin-top:15px;" onclick="window.game.closeModal(); window.game.openInventory();">돌아가기</button>`;
+    showModal(html);
+}
+
+function equipRuneToGear(gearInvIdx, runeInvIdx) {
+    let gear = player.inventory[gearInvIdx];
+    let rune = player.inventory[runeInvIdx];
+    if (!gear || !rune) return;
+
+    if (!gear.sockets) gear.sockets = [];
+    if (gear.sockets.length >= gear.maxSockets) { alert("소켓이 가득 찼습니다!"); return; }
+
+    gear.sockets.push({ ...rune });
+    if (rune.count > 1) rune.count--; else player.inventory.splice(runeInvIdx, 1);
+
+    logNarrative(`💎 장비 [${gear.name}]에 [${rune.name}]을(를) 장착했습니다!`, "reward", "system");
+    openRuneSocketModal(gearInvIdx);
+    updateUI();
+    autoSave();
+}
+
+function removeRuneFromGear(gearInvIdx, runeIdx) {
+    let gear = player.inventory[gearInvIdx];
+    if (!gear || !gear.sockets) return;
+
+    let removedRune = gear.sockets.splice(runeIdx, 1)[0];
+    addItemToInventory({ ...removedRune, count: 1 });
+
+    logNarrative(`🔧 장비에서 [${removedRune.name}]을(를) 회수했습니다.`, "system", "system");
+    openRuneSocketModal(gearInvIdx);
+    updateUI();
+    autoSave();
 }
 
 async function useItem(idx) {
@@ -1922,7 +2021,7 @@ function renderInventoryModal() {
     let filteredIndices = [];
     player.inventory.forEach((item, idx) => {
         if (currentInvTab === 'gear' && item.type !== 'gear') return;
-        if (currentInvTab === 'consumable' && !['potion', 'stone', 'return_stone', 'return_talisman', 'sigil'].includes(item.type)) return;
+        if (currentInvTab === 'consumable' && !['potion', 'stone', 'return_stone', 'return_talisman', 'sigil', 'rune'].includes(item.type)) return;
         if (currentInvTab === 'trash' && item.type !== 'trash') return;
         filteredIndices.push({ item, idx });
     });
@@ -1954,7 +2053,19 @@ function renderInventoryModal() {
                 if (it.matk > 0) { let bMatk = it.baseMatk !== undefined ? it.baseMatk : Math.max(1, it.matk - ((it.enhance||0)*4)); let cEnh = Math.max(0, it.matk - bMatk); res += `<p style="font-size:12px; margin:3px 0;">마법 공격력: ${bMatk} ${cEnh>0?`<span style="color:var(--accent-gold); font-weight:bold;">(+${cEnh})</span>`:''}</p>`; }
                 if (it.def > 0) { let bDef = it.baseDef !== undefined ? it.baseDef : Math.max(1, it.def - ((it.enhance||0)*3)); let cEnh = Math.max(0, it.def - bDef); res += `<p style="font-size:12px; margin:3px 0;">방어력: ${bDef} ${cEnh>0?`<span style="color:var(--accent-gold); font-weight:bold;">(+${cEnh})</span>`:''}</p>`; }
                 if (it.options && it.options.length > 0) { res += `<div style="margin-top:6px; padding-top:4px; border-top:1px dashed var(--border-aged);">`; it.options.forEach(o => res += `<p style="font-size:11.5px; margin:2px 0;">${o.type.toUpperCase()} +${o.val}</p>`); res += `</div>`; }
+                
+                // 💡 소켓 및 장착된 룬 정보 UI 표시
+                let socketCount = it.sockets ? it.sockets.length : 0;
+                res += `<p style="font-size:11.5px; margin:6px 0 2px 0; color:var(--accent-gold);">💎 소켓: ${socketCount} / ${it.maxSockets || 0}</p>`;
+                if (it.sockets && it.sockets.length > 0) {
+                    res += `<div style="font-size:11px; color:#7abfe8; margin-bottom:4px;">[장착된 룬]`;
+                    it.sockets.forEach(s => res += `<br>• ${s.name} (${s.label})`);
+                    res += `</div>`;
+                }
+
                 if (it.effect) res += `<p style="font-size:11.5px; margin:6px 0 2px 0; color:var(--accent-green);">✨ ${it.effect.label} (${it.effect.val}%)</p>`;
+            } else if (it.type === 'rune') {
+                res += `<p style="font-size:12px; margin:4px 0; color:var(--accent-blue);">유형: 장비 룬 (${it.label})</p>`;
             } else { res += `<p style="font-size:12px; margin:4px 0; color:var(--text-muted);">유형: 소모품/재료/특수</p>`; }
             return res;
         }
@@ -1962,7 +2073,10 @@ function renderInventoryModal() {
         html += `<div class="section-box" style="border-color:var(--border-highlight); background:rgba(20,18,16,0.9);"><div class="section-title">선택한 아이템</div>${renderItemStats(item)}<div style="display:flex; gap:8px; margin-top:8px;">`;
         if (item.type === 'gear') {
             html += `<button class="btn-choice" style="flex:1; text-align:center; padding:8px;" onclick="window.game.equipItem(${selectedInvIdx})">착용</button>`;
-            html += `<button class="btn-choice" style="flex:1; text-align:center; padding:8px; background:linear-gradient(to bottom, #2b2b2b, #151515);" onclick="window.game.toggleLockItem(${selectedInvIdx})"><i class="ra ${item.isLocked ? "ra-unlock" : "ra-key"}"></i> ${item.isLocked ? "잠금 해제" : "잠금"}</button>`;
+            if (item.maxSockets > 0) {
+                html += `<button class="btn-choice" style="flex:1; text-align:center; padding:8px; background:linear-gradient(to bottom, #153b3b, #0b1f1f);" onclick="window.game.openRuneSocketModal(${selectedInvIdx})">소켓 관리</button>`;
+            }
+            html += `<button class="btn-choice" style="flex:1; text-align:center; padding:8px; background:linear-gradient(to bottom, #2b2b2b, #151515);" onclick="window.game.toggleLockItem(${selectedInvIdx})"><i class="ra ${item.isLocked ? "ra-unlock" : "ra-key"}"></i> ${item.isLocked ? "해제" : "잠금"}</button>`;
         } else if (['potion', 'return_talisman', 'return_stone', 'sigil'].includes(item.type)) {
             html += `<button class="btn-choice" style="flex:1; text-align:center; padding:8px;" onclick="window.game.useItemInventory(${selectedInvIdx})">사용</button>`;
         }
@@ -2071,7 +2185,7 @@ function openBlacksmith() {
 function buyBaseGear(name, slot, weaponType, price, atk, matk) {
     if (player.gold >= price) {
         if (player.inventory.length >= 50) { alert("가방 가득참!"); return; }
-        player.gold -= price; let gearObj = { name, type: "gear", slot, grade: "일반", reqLevel: 1, price: Math.floor(price * 0.5), count: 1, options: [], isLocked: false };
+        player.gold -= price; let gearObj = { name, type: "gear", slot, grade: "일반", reqLevel: 1, price: Math.floor(price * 0.5), count: 1, options: [], isLocked: false, maxSockets: 0, sockets: [] };
         if (slot === '주무기') { gearObj.weaponType = weaponType; gearObj.atk = atk; gearObj.matk = matk; } else { gearObj.def = 5; }
         gearObj.baseAtk = gearObj.atk || 0; gearObj.baseMatk = gearObj.matk || 0; gearObj.baseDef = gearObj.def || 0;
         addItemToInventory(gearObj); closeModal(); openBlacksmith(); updateUI(); autoSave();
@@ -2113,7 +2227,6 @@ function openEnhanceModal() {
     let w = getStoneCount('weapon'), a = getStoneCount('armor'), t = getStoneCount('transcendent'), p = getStoneCount('protect');
 
     let html = `<h2>장비 강화</h2>`;
-    
     html += `<div style="background:rgba(20,18,16,0.8); border:1px solid var(--accent-gold); padding:8px; border-radius:4px; margin-bottom:8px; text-align:center; box-shadow:0 0 8px rgba(212,175,55,0.2);">
         <span style="color:var(--text-main); font-size:13px;">🔥 집념의 스택 (실패 보정): <strong style="color:var(--accent-gold); font-size:15px;">${player.enhanceFailStack || 0}</strong> </span>
         <span style="font-size:11px; color:var(--text-muted);">(다음 강화 성공률 +${(player.enhanceFailStack || 0) * 2}%)</span>
@@ -2126,7 +2239,6 @@ function openEnhanceModal() {
         <span>🔰 보호권: <strong style="color:var(--accent-gold);">${p}</strong></span>
     </div>`;
 
-    // 💡 [변경] 체크박스 대신 파괴 위험 구간에서 보호권 자동 소모 안내 문구로 변경
     html += `<div style="margin-bottom: 12px; text-align: center; background: rgba(229, 184, 64, 0.1); padding: 8px; border: 1px solid var(--accent-gold); border-radius: 4px;">
         <span style="color:var(--accent-gold); font-size:12.5px; font-weight:bold;">
             🔰 파괴 위험 구간(+8 이상) 진입 시 보유 중인 보호권이 자동으로 소모되어 파괴를 막아줍니다.
@@ -2162,7 +2274,6 @@ function executeEnhance(slot) {
     let reqStoneType = (slot === '주무기' || slot === '보조무기') ? 'weapon' : 'armor'; if (eq.grade === '균열') reqStoneType = 'transcendent';
     let reqStoneName = reqStoneType === 'weapon' ? '무기 강화석' : (reqStoneType === 'armor' ? '방어구 강화석' : '초월의 파편');
     
-    // 1. 강화석 체크
     let stoneIdx = player.inventory.findIndex(i => i.type === 'stone' && i.subType === reqStoneType); 
     if (stoneIdx === -1) { alert(`⚠️ [${reqStoneName}]이(가) 부족합니다!`); return; } 
 
@@ -2172,8 +2283,6 @@ function executeEnhance(slot) {
     let totalFail = 100 - successRate - destroyRate, dropRate = cur >= 5 ? Math.floor(totalFail * 0.5) : 0, roll = Math.random() * 100;
 
     let useProtect = false;
-    
-    // 💡 [변경] 파괴 확률이 존재할 때(+8 이상 구간), 인벤토리에 보호권이 있으면 자동으로 사용 처리
     if (destroyRate > 0) {
         let pIdx = player.inventory.findIndex(i => i.type === 'stone' && i.subType === 'protect');
         if (pIdx !== -1) {
@@ -2182,10 +2291,8 @@ function executeEnhance(slot) {
         }
     }
 
-    // 3. 강화석 1개 소모
     if (player.inventory[stoneIdx].count > 1) player.inventory[stoneIdx].count--; else player.inventory.splice(stoneIdx, 1);
 
-    // 4. 강화 확률 계산 적용
     if (roll < successRate) {
         player.enhanceFailStack = 0; eq.enhance = cur + 1;
         if (eq.baseAtk !== undefined && eq.baseAtk > 0) eq.atk += bonus.atk; if (eq.baseMatk !== undefined && eq.baseMatk > 0) eq.matk += bonus.matk; if (eq.baseDef !== undefined && eq.baseDef > 0) eq.def += bonus.def;
@@ -2193,10 +2300,10 @@ function executeEnhance(slot) {
     } else if (roll < successRate + destroyRate) {
         if (useProtect) {
             player.enhanceFailStack = (player.enhanceFailStack || 0) + 1;
-            logNarrative(`🛡️ <span style="color:var(--accent-gold); font-weight:bold;">[파괴 보호]</span> 보유 중인 보호권이 소모되며 [${eq.name}]의 파괴를 막아냈습니다! (수치 유지)`, "reward", "system");
+            logNarrative(`🛡️ <span style="color:var(--accent-gold); font-weight:bold;">[파괴 보호]</span> 보유 중인 보호권이 소모되며 [${eq.name}]의 파괴를 막아냈습니다!`, "reward", "system");
         } else {
             player.equipment[slot] = null; 
-            logNarrative(`💥 <span style="color:var(--accent-red); font-weight:bold;">[장비 파괴]</span> [${eq.name}] (+${cur}) 산산조각! <span style="font-size:11px; color:var(--text-muted);">(보호권 보유 시 자동으로 방어됩니다)</span>`, "combat", "system");
+            logNarrative(`💥 <span style="color:var(--accent-red); font-weight:bold;">[장비 파괴]</span> [${eq.name}] (+${cur}) 산산조각!`, "combat", "system");
         }
     } else if (roll < successRate + destroyRate + dropRate) {
         player.enhanceFailStack = (player.enhanceFailStack || 0) + 1; let degradeBonus = getEnhanceBonus(eq, cur - 1); eq.enhance = Math.max(0, cur - 1);
@@ -2211,6 +2318,7 @@ function executeEnhance(slot) {
     
     openEnhanceModal(); updateUI(); autoSave();
 }
+
 function openAltarModal() {
     let html = `<h2>🏺 영구 왕국 제단</h2><p>보유 훈장: <strong style="color:var(--accent-red);">${player.honor}개</strong> / 골드: <strong style="color:var(--accent-gold);">${player.gold} G</strong></p>`;
     const upgrades = [
@@ -2391,7 +2499,7 @@ function showChapterIntroModal(chIdx) {
     <button class="btn-choice full-width" style="text-align:center; justify-content:center; margin-top:10px;" onclick="window.game.closeModal()">거점으로 돌아가기</button>`;
     showModal(html);
 
-    let text = ch.expandedLore || ch.lore;
+    let text = ch.expandedLore || ch.lore || "안개 자욱한 황야를 헤쳐나가는 여정입니다.";
     let el = document.getElementById("typewriter-text"); el.innerHTML = ""; let i = 0;
     window.typewriterFullText = text;
     window.currentTypewriter = setInterval(() => { el.innerHTML += text.charAt(i); i++; if (i >= text.length) finishTypewriter(); }, 30);
@@ -2484,7 +2592,6 @@ function triggerTrapNode() { let dmg = Math.floor(getMaxHp() * 0.12); player.hp 
 
 function triggerCombat(isElite) {
     gameState = "COMBAT"; combatTurnCount = 0; let ch = CHAPTERS[currentChapterIdx];
-    
     let modifiers = [
         { prefix: "불타오르는", type: "burn" }, { prefix: "맹독의", type: "poison" }, { prefix: "피에 굶주린", type: "bleed" },
         { prefix: "거대한", type: "stun" }, { prefix: "얼어붙은", type: "freeze" }, { prefix: "눈먼", type: "blind" },
@@ -2492,7 +2599,6 @@ function triggerCombat(isElite) {
         { prefix: "혼돈의", type: "confusion" }, { prefix: "야생의", type: "normal" }
     ];
     let mod = modifiers[Math.floor(Math.random() * modifiers.length)];
-    
     let name = isElite ? `[정예] ${mod.prefix} ${ch.name} 수호수` : `${mod.prefix} ${ch.name} 마물`;
     let hp = Math.floor(ch.lv * 60 * (isElite ? 1.8 : 1.0) + (dungeonDepth * 15));
     let atk = Math.floor(ch.lv * 10 * (isElite ? 1.4 : 1.0)); let def = Math.floor(ch.lv * 3);
@@ -2558,7 +2664,8 @@ window.game = {
     triggerBossCombat, playerAttack, playerSkill, playerUltimate, tryFlee,
     sellAllGear, sellItem, sellAllTrash, openEnhanceModal, executeEnhance,
     buyBaseGear, buyPotion, buyTalisman, buyStone,
-    openRiftMenu, adjustRiftFloor, startRift, promptNextRiftExploration, triggerRiftCombat, escapeRift, retryRiftFloor, openSigilRelicSelect, openSigilOptionSelect, applySigil
+    openRiftMenu, adjustRiftFloor, startRift, promptNextRiftExploration, triggerRiftCombat, escapeRift, retryRiftFloor, openSigilRelicSelect, openSigilOptionSelect, applySigil,
+    openRuneSocketModal, equipRuneToGear, removeRuneFromGear
 };
 
 window.onload = function() { 
