@@ -193,7 +193,7 @@
             <button class="btn-mini" id="btn-lang-en" onclick="window.game.setLanguage('en')">EN</button>
         </div>
 
-        <h1 id="intro-title">《에르가스트룸: 왕국의 맹세.ver:0.90》</h1>
+        <h1 id="intro-title">《에르가스트룸: 왕국의 맹세》</h1>
         <p id="intro-desc">나만의 아이디와 비밀번호로 로그인하여 어느 컴퓨터에서나 모험을 이어가세요.</p>
         
         <input type="text" id="player-id-input" class="intro-input" placeholder="사용할 아이디 (예: hero123)" maxlength="15">
@@ -207,7 +207,7 @@
     <header>
         <div style="display:flex; align-items:center; gap:15px;">
             <button class="btn-mini" onclick="window.game.openChatModal()" style="background:linear-gradient(to bottom, #2a3b4a, #151d24); border-color:var(--accent-blue); padding:6px 10px;"><i class="ra ra-speech-bubble"></i> 주점 채팅</button>
-            <div class="game-title">《에르가스트룸: 왕국의 맹세ver:0.90》</div>
+            <div class="game-title">《에르가스트룸: 왕국의 맹세》</div>
         </div>
         <div class="header-menu">
             <button class="btn-mini" onclick="window.game.manualServerSave()" style="background:linear-gradient(to bottom, #1e3b20, #0f2411);"><i class="ra ra-save"></i> 서버 저장</button>
@@ -319,8 +319,8 @@ let chatUnsubscribe = null;
 let combatTurnCount = 0; 
 
 const i18n_intro = {
-    ko: { title: "《에르가스트룸: 왕국의 맹세 ver 0.90》", desc: "나만의 아이디와 비밀번호로 로그인하여 어느 컴퓨터에서나 모험을 이어가세요.", placeholderId: "사용할 아이디 (예: hero123)", placeholderPw: "비밀번호", startBtn: "계정 생성 / 로그인" },
-    en: { title: "《Ergastrum: Oath of the Kingdom ver.0.90》", desc: "Login with your own ID and password to continue your adventure on any computer.", placeholderId: "Enter ID (e.g., hero123)", placeholderPw: "Password", startBtn: "Register / Login" }
+    ko: { title: "《에르가스트룸: 왕국의 맹세》", desc: "나만의 아이디와 비밀번호로 로그인하여 어느 컴퓨터에서나 모험을 이어가세요.", placeholderId: "사용할 아이디 (예: hero123)", placeholderPw: "비밀번호", startBtn: "계정 생성 / 로그인" },
+    en: { title: "《Ergastrum: Oath of the Kingdom》", desc: "Login with your own ID and password to continue your adventure on any computer.", placeholderId: "Enter ID (e.g., hero123)", placeholderPw: "Password", startBtn: "Register / Login" }
 };
 
 let currentIntroLang = 'ko';
@@ -2519,7 +2519,7 @@ function checkLevelUp() {
                 logNarrative(`🌟 깨달음을 얻었습니다! [특성 포인트(TP) 1 획득]`, "reward", "system"); 
             }
         }
-        logNarrative(`🎉 레벨 업! Lv.${player.level} 달성! (스탯 포인트 +3)`, "reward", "system");
+        logNarrative(`🎉 레벨 업! Lv.${player.level} 달성! (스탯 포인트 +5)`, "reward", "system");
     }
     if (leveledUp) { player.hp = getMaxHp(); player.mp = getMaxMp(); updateUI(); }
 }
