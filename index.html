@@ -1959,10 +1959,6 @@ function selectInventoryItem(idx) { if (player.inventory[idx]) { selectedInvIdx 
 function toggleLockItem(idx) { let item = player.inventory[idx]; if (!item) return; item.isLocked = !item.isLocked; renderInventoryModal(); autoSave(); }
 function discardItem(idx) {
     let item = player.inventory[idx]; if (!item || item.isLocked) return;
-    if (confirm(`[${item.name}]을(를) 버리시겠습니까?`)) { if (item.count > 1) item.count--; else player.inventory.splice(idx, 1); selectedInvIdx = null; openInventory(); updateUI(); autoSave(); }
-}
-function discardItem(idx) {
-    let item = player.inventory[idx]; if (!item || item.isLocked) return;
     if (confirm(`[${item.name}]을(를) 버리시겠습니까?`)) { if (item.count > 1) item.count--; else player.inventory.splice(idx, 1); selectedInvIdx = null; renderInventoryModal(); updateUI(); autoSave(); }
 }
 function equipItem(idx) {
