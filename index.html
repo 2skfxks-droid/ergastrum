@@ -837,15 +837,28 @@ function triggerPlayerPanelShake() { const box = document.getElementById('player
 function setCombatButtonsDisabled(disabled) { const combatButtons = document.querySelectorAll('#action-container .btn-choice, .btn-mini'); combatButtons.forEach(btn => { btn.disabled = disabled; btn.style.opacity = disabled ? '0.5' : '1'; btn.style.cursor = disabled ? 'not-allowed' : 'pointer'; }); }
 
 function addItemToInventory(item) {
-    if (!item.count) item.count = 1; if (item.isLocked === undefined) item.isLocked = false;
+    if (!item.count) item.count = 1; 
+    if (item.isLocked === undefined) item.isLocked = false;
     
-    // 중첩 가능한 아이템 처리
+    // 💡 수정된 부분: 룬은 능력치(label)까지 완벽히 같아야만 중첩(Stack)되도록 조건 추가
     if (['potion', 'stone', 'return_stone', 'return_talisman', 'trash', 'sigil', 'rune'].includes(item.type)) {
-        let existing = player.inventory.find(i => i.name === item.name && i.type === item.type);
-        if (existing) { existing.count += item.count; updateUI(); return true; }
+        let existing = player.inventory.find(i => {
+            // 룬인 경우 이름과 능력치 텍스트(label)가 모두 일치해야 함
+            if (item.type === 'rune') {
+                return i.type === 'rune' && i.name === item.name && i.label === item.label;
+            }
+            // 일반 소모품/재료는 이름만 같으면 중첩
+            return i.name === item.name && i.type === item.type;
+        });
+        
+        if (existing) { 
+            existing.count += item.count; 
+            updateUI(); 
+            return true; 
+        }
     }
     
-    // 💡 변경된 부분: 룬 100칸, 일반 아이템 50칸 한도 분리 계산
+    // 룬 100칸, 일반 아이템 50칸 한도 분리 계산
     let isRune = (item.type === 'rune');
     let runeCount = player.inventory.filter(i => i.type === 'rune').length;
     let normalCount = player.inventory.filter(i => i.type !== 'rune').length;
@@ -861,7 +874,9 @@ function addItemToInventory(item) {
         return false; 
     }
 
-    player.inventory.push(item); updateUI(); return true;
+    player.inventory.push(item); 
+    updateUI(); 
+    return true;
 }
 function showModal(html) { const overlay = document.getElementById("modal-overlay"); const content = document.getElementById("modal-content"); content.innerHTML = html; overlay.classList.remove("hidden"); }
 function closeModal() { if (currentTypewriter) { clearInterval(currentTypewriter); currentTypewriter = null; } document.getElementById("modal-overlay").classList.add("hidden"); selectedInvIdx = null; pendingRelic = null; }
