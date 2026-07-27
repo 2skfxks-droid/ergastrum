@@ -840,14 +840,31 @@ function setCombatButtonsDisabled(disabled) { const combatButtons = document.que
 
 function addItemToInventory(item) {
     if (!item.count) item.count = 1; if (item.isLocked === undefined) item.isLocked = false;
+    
+    // 중첩 가능한 아이템 처리
     if (['potion', 'stone', 'return_stone', 'return_talisman', 'trash', 'sigil', 'rune'].includes(item.type)) {
         let existing = player.inventory.find(i => i.name === item.name && i.type === item.type);
         if (existing) { existing.count += item.count; updateUI(); return true; }
     }
-    if (player.inventory.length >= 50) { alert("⚠️ 가방이 가득 찼습니다!"); logNarrative(`⚠️ [${item.name}] 획득 실패!`, "combat", "system"); return false; }
+    
+    // 💡 변경된 부분: 룬 100칸, 일반 아이템 50칸 한도 분리 계산
+    let isRune = (item.type === 'rune');
+    let runeCount = player.inventory.filter(i => i.type === 'rune').length;
+    let normalCount = player.inventory.filter(i => i.type !== 'rune').length;
+
+    if (isRune && runeCount >= 100) { 
+        alert("⚠️ 룬 보관함(100칸)이 가득 찼습니다!"); 
+        logNarrative(`⚠️ [${item.name}] 획득 실패!`, "combat", "system"); 
+        return false; 
+    }
+    if (!isRune && normalCount >= 50) { 
+        alert("⚠️ 가방(50칸)이 가득 찼습니다!"); 
+        logNarrative(`⚠️ [${item.name}] 획득 실패!`, "combat", "system"); 
+        return false; 
+    }
+
     player.inventory.push(item); updateUI(); return true;
 }
-
 function showModal(html) { const overlay = document.getElementById("modal-overlay"); const content = document.getElementById("modal-content"); content.innerHTML = html; overlay.classList.remove("hidden"); }
 function closeModal() { if (currentTypewriter) { clearInterval(currentTypewriter); currentTypewriter = null; } document.getElementById("modal-overlay").classList.add("hidden"); selectedInvIdx = null; pendingRelic = null; }
 
@@ -2018,20 +2035,43 @@ function renderInventoryModal() {
     });
     html += `</div>`;
 
-    let tabs = [{ id: 'all', label: '전체' }, { id: 'gear', label: '장비' }, { id: 'consumable', label: '소모품/재료' }, { id: 'trash', label: '잡동사니' }];
+    // 💡 1. 탭 목록에 'rune' 추가
+    let tabs = [
+        { id: 'all', label: '전체' }, 
+        { id: 'gear', label: '장비' }, 
+        { id: 'consumable', label: '소모품' }, 
+        { id: 'trash', label: '잡동사니' },
+        { id: 'rune', label: '룬 보관함' } // 룬 전용 탭 추가
+    ];
+    
     html += `<div style="display:flex; gap:6px; margin-bottom:4px;">`;
-    tabs.forEach(t => { html += `<button class="btn-mini" style="flex:1; padding:6px 0; text-align:center; ${currentInvTab === t.id ? "background:var(--btn-hover); border-color:var(--accent-gold); color:var(--accent-gold); font-weight:bold;" : "opacity:0.7;"}" onclick="window.game.setInventoryTab('${t.id}')">${t.label}</button>`; });
+    tabs.forEach(t => { 
+        let isRuneTab = (t.id === 'rune');
+        let activeStyle = currentInvTab === t.id 
+            ? (isRuneTab ? "background:var(--btn-hover); border-color:#6be082; color:#6be082; font-weight:bold;" : "background:var(--btn-hover); border-color:var(--accent-gold); color:var(--accent-gold); font-weight:bold;") 
+            : "opacity:0.7;";
+        html += `<button class="btn-mini" style="flex:1; padding:6px 0; text-align:center; ${activeStyle}" onclick="window.game.setInventoryTab('${t.id}')">${t.label}</button>`; 
+    });
     html += `</div><div class="inventory-grid">`;
     
+    // 💡 2. 아이템 필터링 로직 수정 (룬은 룬 탭에서만 보이게 분리)
     let filteredIndices = [];
     player.inventory.forEach((item, idx) => {
+        // 일반 탭('all' 포함)에서는 룬을 숨겨서 50칸 제한과 완벽히 분리
+        if (currentInvTab !== 'rune' && item.type === 'rune') return; 
+
         if (currentInvTab === 'gear' && item.type !== 'gear') return;
-        if (currentInvTab === 'consumable' && !['potion', 'stone', 'return_stone', 'return_talisman', 'sigil', 'rune'].includes(item.type)) return;
+        if (currentInvTab === 'consumable' && !['potion', 'stone', 'return_stone', 'return_talisman', 'sigil'].includes(item.type)) return;
         if (currentInvTab === 'trash' && item.type !== 'trash') return;
+        if (currentInvTab === 'rune' && item.type !== 'rune') return;
+
         filteredIndices.push({ item, idx });
     });
 
-    for (let i = 0; i < 50; i++) {
+    // 💡 3. 최대 칸 수 동적 설정 (룬 탭이면 100칸, 아니면 50칸)
+    let maxSlots = (currentInvTab === 'rune') ? 100 : 50;
+
+    for (let i = 0; i < maxSlots; i++) {
         let entry = filteredIndices[i];
         if (entry) {
             let item = entry.item, realIdx = entry.idx;
@@ -2042,10 +2082,13 @@ function renderInventoryModal() {
                 <span style="font-weight:bold; line-height:1.1;">${item.name.length > 7 ? item.name.substring(0, 6) + '..' : item.name}</span>
                 ${item.count > 1 ? `<span style="position:absolute; bottom:2px; right:2px; font-size:9px; font-weight:bold; background:#000; padding:1px 4px; border-radius:2px; z-index:5;">x${item.count}</span>` : ''}
             </div>`;
-        } else { html += `<div class="inv-slot" style="opacity: 0.15; cursor: default;"></div>`; }
+        } else { 
+            html += `<div class="inv-slot" style="opacity: 0.15; cursor: default;"></div>`; 
+        }
     }
     html += `</div>`;
 
+    // 4. 하단 상세 정보 UI (기존 코드 100% 동일)
     if (selectedInvIdx !== null && player.inventory[selectedInvIdx]) {
         let item = player.inventory[selectedInvIdx]; let equipped = item.type === 'gear' ? player.equipment[item.slot] : null;
         html += `<div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:12px;">`;
@@ -2059,7 +2102,6 @@ function renderInventoryModal() {
                 if (it.def > 0) { let bDef = it.baseDef !== undefined ? it.baseDef : Math.max(1, it.def - ((it.enhance||0)*3)); let cEnh = Math.max(0, it.def - bDef); res += `<p style="font-size:12px; margin:3px 0;">방어력: ${bDef} ${cEnh>0?`<span style="color:var(--accent-gold); font-weight:bold;">(+${cEnh})</span>`:''}</p>`; }
                 if (it.options && it.options.length > 0) { res += `<div style="margin-top:6px; padding-top:4px; border-top:1px dashed var(--border-aged);">`; it.options.forEach(o => res += `<p style="font-size:11.5px; margin:2px 0;">${o.type.toUpperCase()} +${o.val}</p>`); res += `</div>`; }
                 
-                // 💡 소켓 및 장착된 룬 정보 UI 표시
                 let socketCount = it.sockets ? it.sockets.length : 0;
                 res += `<p style="font-size:11.5px; margin:6px 0 2px 0; color:var(--accent-gold);">💎 소켓: ${socketCount} / ${it.maxSockets || 0}</p>`;
                 if (it.sockets && it.sockets.length > 0) {
@@ -2067,7 +2109,6 @@ function renderInventoryModal() {
                     it.sockets.forEach(s => res += `<br>• ${s.name} (${s.label})`);
                     res += `</div>`;
                 }
-
                 if (it.effect) res += `<p style="font-size:11.5px; margin:6px 0 2px 0; color:var(--accent-green);">✨ ${it.effect.label} (${it.effect.val}%)</p>`;
             } else if (it.type === 'rune') {
                 res += `<p style="font-size:12px; margin:4px 0; color:var(--accent-blue);">유형: 장비 룬 (${it.label})</p>`;
@@ -2093,7 +2134,6 @@ function renderInventoryModal() {
     html += `<button class="btn-choice full-width" style="text-align:center; justify-content:center; margin-top:12px;" onclick="window.game.closeModal()">닫기</button>`;
     showModal(html);
 }
-
 function openInventory() { if (gameState === "COMBAT") { logNarrative(`⚠️ 전투 중 인벤토리 사용 불가!`, "combat", "system"); return; } selectedInvIdx = null; renderInventoryModal(); }
 function setInventoryTab(tabName) { currentInvTab = tabName; selectedInvIdx = null; renderInventoryModal(); }
 function selectInventoryItem(idx) { if (player.inventory[idx]) { selectedInvIdx = idx; renderInventoryModal(); } }
