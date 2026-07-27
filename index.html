@@ -343,8 +343,6 @@ function generateRune(forcedGrade = null) {
     let gradeIdx = RUNE_GRADES.indexOf(grade);
     let rangeSpan = typeObj.max - typeObj.min;
     
-    // 수정된 부분: 등급별로 능력치 구간을 완벽하게 20%씩 분할합니다.
-    // 일반(0~20%), 정예(20~40%), 희귀(40~60%), 영웅(60~80%), 전설(80~100%)
     let minRatio = gradeIdx * 0.2; 
     let randomRatio = minRatio + (Math.random() * 0.2); 
     randomRatio = Math.min(1.0, randomRatio);
@@ -1673,7 +1671,6 @@ async function winCombat() {
             await appendLogAsync(`✨ [균열 보상] 초월의 파편 ${fragCount}개 획득!`, "reward", "system");
         }
         
-        // 💡 [여기 추가] 균열 탑 클리어 시 일정 확률로 룬 드랍 (보스 50%, 일반 층 20%)
         let runeDropChance = isBoss ? 0.50 : 0.20;
         if (Math.random() < runeDropChance) {
             let forcedGrade = null;
@@ -2052,7 +2049,20 @@ function renderInventoryModal() {
             : "opacity:0.7;";
         html += `<button class="btn-mini" style="flex:1; padding:6px 0; text-align:center; ${activeStyle}" onclick="window.game.setInventoryTab('${t.id}')">${t.label}</button>`; 
     });
-    html += `</div><div class="inventory-grid">`;
+    html += `</div>`;
+
+    // ==========================================
+    // 💡 룬 자동 합성 UI 배너
+    // ==========================================
+    if (currentInvTab === 'rune') {
+        html += `
+        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(20,18,16,0.8); border:1px solid #4a8a4a; padding:8px 12px; border-radius:4px; margin-bottom:8px; box-shadow: 0 0 10px rgba(107, 224, 130, 0.1);">
+            <span style="font-size: 11px; color: var(--text-muted);">※ 동일 등급 룬 3개 ➔ 확률적 상위 등급 1개 (실패 시 1개 반환 / 잠금 제외)</span>
+            <button class="btn-choice stat-alert" style="padding:6px 12px; font-size:12px; background:linear-gradient(to bottom, #153b20, #0b1f11); border-color:#6be082; color:#6be082; box-shadow:0 0 5px rgba(107,224,130,0.5);" onclick="window.game.autoSynthesizeRunes()"><i class="ra ra-crystals"></i> 자동 합성</button>
+        </div>`;
+    }
+
+    html += `<div class="inventory-grid">`;
     
     // 💡 2. 아이템 필터링 로직 수정 (룬은 룬 탭에서만 보이게 분리)
     let filteredIndices = [];
@@ -2448,7 +2458,7 @@ function exploreVillage() {
     else if (hub === "별빛 연금학회 요새") npcDialogs = [{ name: "광기어린 연금술사", text: "심연의 피! 완벽한 현자의 돌을 만들 수 있어!" }, { name: "기록 보관학자", text: "과거 마법 세력들의 오만함이 이 요새를 얼어붙게 만들었고, 금기된 실험이 괴물들을 탄생시켰지." }, { name: "요새 방위대장", text: "상점거리에 들러서 단단히 준비해두게." }];
     else npcDialogs = [{ name: "침묵의 감시자", text: "........" }, { name: "최후의 사제", text: "신들조차 눈을 감아버린 세상입니다." }, { name: "노련한 원정대원", text: "여기까지 오다니... 당신은 진짜 괴물이군." }];
     let npc = npcDialogs[Math.floor(Math.random() * npcDialogs.length)];
-    let html = `<h2>마을 주변 탐색</h2><div style="background:rgba(20,18,16,0.8); border:1px solid var(--border-aged); padding:20px; border-radius:4px; margin-bottom:15px; box-shadow:inset 0 0 15px rgba(0,0,0,0.8);"><div style="color:var(--accent-gold); font-weight:bold; margin-bottom:12px; font-size:16px;"><i class="ra ra-player"></i> ${npc.name}</div><div style="font-size:15px; color:var(--text-main); line-height:1.7; font-style:italic;">"${npc.text}"</div></div><button class="btn-choice full-width" style="justify-content:center; margin-top:15px;" onclick="window.game.closeModal()">탐색 종료</button>`;
+    let html = `<h2>마일 주변 탐색</h2><div style="background:rgba(20,18,16,0.8); border:1px solid var(--border-aged); padding:20px; border-radius:4px; margin-bottom:15px; box-shadow:inset 0 0 15px rgba(0,0,0,0.8);"><div style="color:var(--accent-gold); font-weight:bold; margin-bottom:12px; font-size:16px;"><i class="ra ra-player"></i> ${npc.name}</div><div style="font-size:15px; color:var(--text-main); line-height:1.7; font-style:italic;">"${npc.text}"</div></div><button class="btn-choice full-width" style="justify-content:center; margin-top:15px;" onclick="window.game.closeModal()">탐색 종료</button>`;
     showModal(html);
 }
 
@@ -2640,7 +2650,8 @@ function triggerCombat(isElite) {
     let modifiers = [
         { prefix: "불타오르는", type: "burn" }, { prefix: "맹독의", type: "poison" }, { prefix: "피에 굶주린", type: "bleed" },
         { prefix: "거대한", type: "stun" }, { prefix: "얼어붙은", type: "freeze" }, { prefix: "눈먼", type: "blind" },
-        { prefix: "침묵의", type: "silence" }, { prefix: "몽환의", type: "sleep" }, { prefix: "부식성", type: "armor_break" },
+        { prefix: "침묵의", type: "silence" }, { prefix: "몽환의", type: "sleep" },
+        { prefix: "부식성", type: "armor_break" },
         { prefix: "혼돈의", type: "confusion" }, { prefix: "야생의", type: "normal" }
     ];
     let mod = modifiers[Math.floor(Math.random() * modifiers.length)];
@@ -2654,6 +2665,7 @@ function triggerCombat(isElite) {
     logNarrative(`적 조우: <span class="log-combat">${name}</span> (HP: ${hp})`, "combat", "system");
     renderCombatActions(); updateUI(); autoSave();
 }
+
 function triggerBossCombat() {
     gameState = "COMBAT"; combatTurnCount = 0; let ch = CHAPTERS[currentChapterIdx];
     currentEnemy = { name: `[👑 보스] ${ch.boss}`, hp: ch.hp, maxHp: ch.hp, atk: ch.lv * 15 + 25, def: ch.lv * 5 + 5, matk: ch.lv * 15 + 20, mres: ch.lv * 5, isBoss: true, mType: 'normal', statuses: [] };
@@ -2695,6 +2707,73 @@ function triggerRelicDrop() {
     else { openRelicChoiceModal(newRelic); }
 }
 
+// ==========================================
+// 💡 룬 자동 합성 함수 추가
+// ==========================================
+function autoSynthesizeRunes() {
+    let grades = ["일반", "정예", "희귀", "영웅", "전설"];
+    let rates = [0.75, 0.50, 0.30, 0.15]; 
+
+    let totalResults = { success: 0, fail: 0 };
+    let logs = [];
+    let changed = true;
+
+    while(changed) {
+        changed = false;
+        for (let i = 0; i < grades.length - 1; i++) {
+            let currentGrade = grades[i];
+            let nextGrade = grades[i+1];
+
+            let runesOfGrade = player.inventory.filter(r => r.type === 'rune' && r.grade === currentGrade && !r.isLocked);
+            let totalRunes = runesOfGrade.reduce((sum, r) => sum + (r.count || 1), 0);
+
+            if (totalRunes >= 3) {
+                let attempts = Math.floor(totalRunes / 3);
+                let successes = 0;
+                let fails = 0;
+
+                let toDeduct = attempts * 3;
+                for (let r of player.inventory) {
+                    if (toDeduct <= 0) break;
+                    if (r.type === 'rune' && r.grade === currentGrade && !r.isLocked) {
+                        let deductAmt = Math.min(r.count, toDeduct);
+                        r.count -= deductAmt;
+                        toDeduct -= deductAmt;
+                    }
+                }
+
+                player.inventory = player.inventory.filter(item => !(item.type === 'rune' && item.count <= 0));
+
+                for (let j = 0; j < attempts; j++) {
+                    if (Math.random() < rates[i]) {
+                        successes++;
+                        addItemToInventory(generateRune(nextGrade));
+                    } else {
+                        fails++;
+                        addItemToInventory(generateRune(currentGrade));
+                    }
+                }
+
+                if (successes > 0 || fails > 0) {
+                    logs.push(`[${currentGrade} ➔ ${nextGrade}] 시도: ${attempts}회 (성공 <span style="color:var(--accent-green);">${successes}</span> / 실패 <span style="color:var(--accent-red);">${fails}</span>)`);
+                    totalResults.success += successes;
+                    totalResults.fail += fails;
+                    changed = true; 
+                }
+            }
+        }
+    }
+
+    if (totalResults.success > 0 || totalResults.fail > 0) {
+        logNarrative(`🔮 <strong style="color:#6be082;">[룬 자동 합성 완료]</strong> 총 성공 ${totalResults.success}회, 실패 ${totalResults.fail}회<br>${logs.join('<br>')}`, "system", "system");
+        renderInventoryModal();
+        updateUI();
+        autoSave();
+    } else {
+        alert("합성할 룬이 부족합니다.\n(동일 등급의 잠금 해제된 룬이 3개 이상 필요)");
+    }
+}
+
 window.game = {
     setLanguage, closeModal, loginOrRegister, manualServerSave, loadGame, startAdventure,
     openChatModal, sendChatMessage,
@@ -2710,7 +2789,8 @@ window.game = {
     sellAllGear, sellItem, sellAllTrash, openEnhanceModal, executeEnhance,
     buyBaseGear, buyPotion, buyTalisman, buyStone,
     openRiftMenu, adjustRiftFloor, startRift, promptNextRiftExploration, triggerRiftCombat, escapeRift, retryRiftFloor, openSigilRelicSelect, openSigilOptionSelect, applySigil,
-    openRuneSocketModal, equipRuneToGear, removeRuneFromGear
+    openRuneSocketModal, equipRuneToGear, removeRuneFromGear,
+    autoSynthesizeRunes // 💡 여기에 등록 완료
 };
 
 window.onload = function() { 
