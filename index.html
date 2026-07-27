@@ -2395,6 +2395,7 @@ function openBlacksmith() {
     
     html += `<h3 style="margin-top:10px;">강화소 및 특수 아이템</h3>`;
     html += `<button class="btn-choice full-width" style="justify-content:center; margin-bottom:6px; background:linear-gradient(to bottom, #2c241b, #1a1510);" onclick="window.game.openEnhanceModal()"><i class="ra ra-anvil"></i> 장비 강화소 열기</button>`;
+    html += `<button class="btn-choice full-width" style="justify-content:center; margin-bottom:6px; background:linear-gradient(to bottom, #3b103b, #1a051a); border-color:#ff77ff;" onclick="window.game.openSocketExpansionModal()"><i class="ra ra-gem" style="color:#ff77ff;"></i> 장비 소켓 뚫기 (초월의 파편 소모)</button>`;
     html += `<button class="btn-choice full-width" style="justify-content:center; margin-bottom:15px; border-color:#e5b840;" onclick="window.game.buyStone('장비 파괴 보호권', 'protect', 50000)"><i class="ra ra-shield" style="color:#e5b840;"></i> 장비 파괴 보호권 구입 (50,000 G)</button>`;
 
     html += `<h3>상시 장비 구입</h3>`;
@@ -3010,7 +3011,87 @@ function autoSynthesizeRunes() {
         alert("합성할 룬이 부족합니다.\n(동일 등급의 잠금 해제된 룬이 3개 이상 필요)");
     }
 }
+function openSocketExpansionModal() {
+    let t = getStoneCount('transcendent'); // 초월의 파편 개수
 
+    let html = `<h2>장비 소켓 뚫기</h2>`;
+    html += `<div style="background:rgba(20,18,16,0.8); border:1px solid #ff77ff; padding:10px; border-radius:4px; margin-bottom:12px; text-align:center; box-shadow:0 0 8px rgba(255,119,255,0.2);">
+        <span style="color:var(--text-main); font-size:13.5px;">보유 중인 초월의 파편: <strong style="color:#ff77ff; font-size:16px;">${t}</strong> 개</span><br>
+        <span style="font-size:11.5px; color:var(--text-muted);">1회 시도 시 20개 소모 (성공 확률: 30% / 최대 3소켓)</span>
+    </div>`;
+
+    let hasExpandableGear = false;
+    
+    // 장착 중인 장비 목록
+    html += `<h3 style="margin-bottom:5px;">장착 중인 장비</h3>`;
+    EQUIPMENT_SLOTS.forEach(slot => {
+        let eq = player.equipment[slot];
+        if (eq && eq.maxSockets < 3) {
+            hasExpandableGear = true;
+            html += `<div style="background:rgba(20,18,16,0.9); border:1px solid var(--border-aged); padding:10px; margin-bottom:6px; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+                <div><span class="grade-${eq.grade}">[${slot}] ${eq.name}</span><br><span style="font-size:11.5px; color:var(--text-muted);">현재 소켓: ${eq.maxSockets}/3</span></div>
+                <button class="btn-mini" style="background:#2b152b; border-color:#ff77ff; color:#ff77ff; padding:6px 10px;" onclick="window.game.executeSocketExpansion('equip', '${slot}')">확장 시도</button>
+            </div>`;
+        }
+    });
+
+    // 인벤토리 장비 목록
+    html += `<h3 style="margin-top:15px; margin-bottom:5px;">인벤토리 장비</h3>`;
+    player.inventory.forEach((item, idx) => {
+        if (item.type === 'gear' && item.maxSockets < 3) {
+            hasExpandableGear = true;
+            html += `<div style="background:rgba(20,18,16,0.9); border:1px solid var(--border-aged); padding:10px; margin-bottom:6px; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+                <div><span class="grade-${item.grade}">[인벤] ${item.name}</span><br><span style="font-size:11.5px; color:var(--text-muted);">현재 소켓: ${item.maxSockets}/3</span></div>
+                <button class="btn-mini" style="background:#2b152b; border-color:#ff77ff; color:#ff77ff; padding:6px 10px;" onclick="window.game.executeSocketExpansion('inv', ${idx})">확장 시도</button>
+            </div>`;
+        }
+    });
+
+    if (!hasExpandableGear) html += `<p style="font-size:12.5px; color:var(--text-muted); text-align:center; padding:20px;">소켓 확장이 가능한 장비가 없습니다.</p>`;
+    
+    html += `<button class="btn-choice full-width" style="justify-content:center; margin-top:15px;" onclick="window.game.closeModal(); window.game.openBlacksmith();">뒤로 가기</button>`;
+    showModal(html);
+}
+
+function executeSocketExpansion(targetType, targetKey) {
+    let gear = targetType === 'equip' ? player.equipment[targetKey] : player.inventory[targetKey];
+    if (!gear) return;
+    
+    if (gear.maxSockets >= 3) { alert("이미 최대 소켓(3개)입니다!"); return; }
+    
+    let tCount = getStoneCount('transcendent');
+    if (tCount < 20) { alert("초월의 파편이 부족합니다! (20개 필요)"); return; }
+
+    // 재화 20개 차감 로직 (여러 스택에 나뉘어 있을 수 있으므로 순회하며 차감)
+    let req = 20;
+    for (let i = player.inventory.length - 1; i >= 0; i--) {
+        let item = player.inventory[i];
+        if (item.type === 'stone' && item.subType === 'transcendent') {
+            if (item.count > req) { 
+                item.count -= req; 
+                req = 0; 
+                break; 
+            } else { 
+                req -= item.count; 
+                player.inventory.splice(i, 1); 
+            }
+        }
+        if (req <= 0) break;
+    }
+
+    // 확률 계산 (30% 성공)
+    if (Math.random() < 0.30) {
+        gear.maxSockets++;
+        logNarrative(`✨ <span style="color:#ff77ff; font-weight:bold;">[소켓 뚫기 성공]</span> [${gear.name}] 장비에 새로운 소켓 홈이 파였습니다! (현재: ${gear.maxSockets}개)`, "reward", "system");
+        alert(`성공! [${gear.name}]의 소켓이 뚫렸습니다.`);
+    } else {
+        logNarrative(`❌ <span style="color:var(--text-muted); font-weight:bold;">[소켓 뚫기 실패]</span> 초월의 파편이 부서져버렸습니다...`, "combat", "system");
+    }
+
+    openSocketExpansionModal();
+    updateUI();
+    autoSave();
+}
 window.game = {
     setLanguage, closeModal, loginOrRegister, manualServerSave, loadGame, startAdventure,
     openChatModal, sendChatMessage,
@@ -3028,7 +3109,8 @@ window.game = {
     buyBaseGear, buyPotion, buyTalisman, buyStone,
     openRiftMenu, adjustRiftFloor, startRift, promptNextRiftExploration, triggerRiftCombat, escapeRift, retryRiftFloor, openSigilRelicSelect, openSigilOptionSelect, applySigil,
     openRuneSocketModal, equipRuneToGear, removeRuneFromGear,
-    autoSynthesizeRunes
+    autoSynthesizeRunes,
+    openSocketExpansionModal, executeSocketExpansion
 };
 
 window.onload = function() { 
