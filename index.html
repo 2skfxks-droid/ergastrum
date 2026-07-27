@@ -777,8 +777,12 @@ function getAccessoryEffect(effectType) {
     if (effectType === 'vampire') total += getRuneBonus('vampire');
     return total;
 }
-function getStoneCount(subType) {
-    let count = 0; player.inventory.forEach(i => { if (i.type === 'stone' && i.subType === subType) count += (i.count || 1); }); return count;
+function getStoneCount(targetStr) {
+    let count = 0; 
+    player.inventory.forEach(i => { 
+        if ((i.type === 'stone' && i.subType === targetStr) || i.type === targetStr) count += (i.count || 1); 
+    }); 
+    return count;
 }
 function getEnhanceBonus(eq, currentEnhance) {
     if (!eq) return { atk: 0, matk: 0, def: 0 };
@@ -836,7 +840,7 @@ function addItemToInventory(item) {
     if (!item.count) item.count = 1; 
     if (item.isLocked === undefined) item.isLocked = false;
     
-    if (['potion', 'stone', 'return_stone', 'return_talisman', 'trash', 'sigil', 'rune'].includes(item.type)) {
+  if (['potion', 'stone', 'return_stone', 'return_talisman', 'trash', 'sigil', 'rune', 'season_ticket', 'season_essence'].includes(item.type)) {
         let existing = player.inventory.find(i => {
             if (item.type === 'rune') return i.type === 'rune' && i.name === item.name && i.label === item.label;
             return i.name === item.name && i.type === item.type;
@@ -2138,7 +2142,7 @@ function renderInventoryModal() {
     player.inventory.forEach((item, idx) => {
         if (currentInvTab !== 'rune' && item.type === 'rune') return; 
         if (currentInvTab === 'gear' && item.type !== 'gear') return;
-        if (currentInvTab === 'consumable' && !['potion', 'stone', 'return_stone', 'return_talisman', 'sigil'].includes(item.type)) return;
+        if (currentInvTab === 'consumable' && !['potion', 'stone', 'return_stone', 'return_talisman', 'sigil', 'season_ticket', 'season_essence'].includes(item.type)) return;
         if (currentInvTab === 'trash' && item.type !== 'trash') return;
         if (currentInvTab === 'rune' && item.type !== 'rune') return;
         filteredIndices.push({ item, idx });
