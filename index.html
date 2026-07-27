@@ -495,7 +495,7 @@ const CHAPTERS = [
 const PASSIVE_SKILLS = {
     "전사": { name: "철갑 요새", desc: "받는 모든 피해량이 10% 감소합니다." },
     "성기사": { name: "신성한 오라", desc: "방어력의 40%만큼 최종 공격력이 상승합니다." },
-    "광전사": { name: "끓어오르는 피", desc: "체력이 80% 이하부터 30%까지 낮아질수록 공격력이 최대 80% 증가합니다." },
+    "광전사": { name: "끓어오르는 피", desc: "체력이 80% 이하부터 30%까지 낮아질수록 공격력이 최대 50% 증가합니다." },
     "마법사": { name: "마력 응축", desc: "주문력(마법 공격력)이 15% 증가합니다." },
     "원소술사": { name: "원소 메아리", desc: "스킬 사용 시 20% 확률로 MP 소모를 무시하며, 주문력이 추가 15% 증가합니다." },
     "흑마법사": { name: "영혼 스킬", desc: "일반 스킬 사용 시 8% 확률로 MP 소모 없이 스킬이 한 번 더 발동합니다." },
@@ -710,7 +710,7 @@ function getPlayerAtk() {
     if (player.job === '성기사' && player.tier >= 2) { base += Math.floor(getPlayerDef() * 0.40); }
     if (player.job === '광전사' && player.tier >= 2) {
         let hpPct = player.hp / getMaxHp();
-        if (hpPct <= 0.8) { let boost = Math.min(0.8, (0.8 - hpPct) * 1.6); base += Math.floor(base * boost); }
+        if (hpPct <= 0.8) { let boost = Math.min(0.5, (0.8 - hpPct) * 1.0); base += Math.floor(base * boost); }
     }
     return base;
 }
