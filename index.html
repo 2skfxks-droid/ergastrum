@@ -1352,40 +1352,48 @@ async function playerAttack() {
 async function playerSkill() {
     if (isProcessingTurn || gameState !== 'COMBAT' || !currentEnemy) return;
     
-    let canAct = await processStatuses(player, true);
-    if (!canAct) {
-        if (currentEnemy.hp > 0) await enemyTurnAsync();
-        return; 
-    }
+    // [수정됨] 함수 시작과 동시에 즉시 버튼 클릭과 턴 진행을 잠급니다.
+    isProcessingTurn = true; 
+    setCombatButtonsDisabled(true);
+    
+    try {
+        let canAct = await processStatuses(player, true);
+        if (!canAct) {
+            if (currentEnemy && currentEnemy.hp > 0) await enemyTurnAsync();
+            return; 
+        }
 
-    if (hasStatus(player, 'silence')) {
-        logNarrative(`🤐 <span style="color:#bba98c;">[침묵]</span> 마력이 봉인되어 스킬을 구사할 수 없습니다!`, 'combat', 'system');
-        return;
-    }
+        if (hasStatus(player, 'silence')) {
+            logNarrative(`🤐 <span style="color:#bba98c;">[침묵]</span> 마력이 봉인되어 스킬을 구사할 수 없습니다!`, 'combat', 'system');
+            return;
+        }
 
-    if (hasStatus(player, 'confusion') && Math.random() < 0.30) {
-        isProcessingTurn = true; setCombatButtonsDisabled(true);
-        try {
+        if (hasStatus(player, 'confusion') && Math.random() < 0.30) {
             let selfDmg = Math.floor(getPlayerAtk() * 0.5);
             player.hp = Math.max(1, player.hp - selfDmg);
             showFloatingText(selfDmg, 'damage', true);
             await appendLogAsync(`🌀 <span style="color:#c485e0; font-weight:bold;">[혼란]</span> 환각에 빠져 자신을 공격했습니다! <span class="combat-damage">${selfDmg}</span> 자해 피해!`, 'combat', 'player');
-            updateUI(); await enemyTurnAsync(); return;
-        } finally { setCombatButtonsDisabled(false); isProcessingTurn = false; }
-    }
+            updateUI(); 
+            if (currentEnemy && currentEnemy.hp > 0) await enemyTurnAsync(); 
+            return;
+        }
 
-    let skill = JOB_SKILLS[player.job] || JOB_SKILLS["방랑자"];
-    let isFree = (player.job === '원소술사' && player.tier >= 2 && Math.random() < 0.20);
-    let isChaosFree = (player.talents && player.talents.chaos >= 4 && Math.random() < 0.15); 
-    if (isChaosFree) isFree = true;
-    
-    let finalCost = Math.max(0, Math.floor(skill.cost * (1 - getSigilBonus('mpCostDec'))));
-    if (player.talents && player.talents.chaos >= 1) finalCost = Math.floor(finalCost * 0.85); 
+        let skill = JOB_SKILLS[player.job] || JOB_SKILLS["방랑자"];
+        let isFree = (player.job === '원소술사' && player.tier >= 2 && Math.random() < 0.20);
+        let isChaosFree = (player.talents && player.talents.chaos >= 4 && Math.random() < 0.15); 
+        if (isChaosFree) isFree = true;
+        
+        let finalCost = Math.max(0, Math.floor(skill.cost * (1 - getSigilBonus('mpCostDec'))));
+        if (player.talents && player.talents.chaos >= 1) finalCost = Math.floor(finalCost * 0.85); 
 
-    if (!isFree) { if (player.mp < finalCost) { logNarrative(`⚠️ 마력이 부족합니다!`, "combat", "system"); return; } player.mp -= finalCost; }
+        if (!isFree) { 
+            if (player.mp < finalCost) { 
+                logNarrative(`⚠️ 마력이 부족합니다!`, "combat", "system"); 
+                return; 
+            } 
+            player.mp -= finalCost; 
+        }
 
-    isProcessingTurn = true; setCombatButtonsDisabled(true);
-    try {
         combatTurnCount++;
         const box = document.getElementById("narrative-log");
         const divider = document.createElement("div");
@@ -1444,38 +1452,46 @@ async function playerSkill() {
         }
         if (currentEnemy.hp <= 0) { await winCombat(); return; }
         await enemyTurnAsync();
-    } finally { setCombatButtonsDisabled(false); isProcessingTurn = false; }
+        
+    } finally { 
+        // 성공하든 에러가 나든 반드시 잠금을 해제합니다.
+        setCombatButtonsDisabled(false); 
+        isProcessingTurn = false; 
+    }
 }
 
 async function playerUltimate() {
     if (isProcessingTurn || gameState !== 'COMBAT' || !currentEnemy) return;
     
-    let canAct = await processStatuses(player, true);
-    if (!canAct) {
-        if (currentEnemy.hp > 0) await enemyTurnAsync();
-        return; 
-    }
+    // [수정됨] 궁극기 역시 시작과 동시에 잠급니다.
+    isProcessingTurn = true; 
+    setCombatButtonsDisabled(true);
+    
+    try {
+        let canAct = await processStatuses(player, true);
+        if (!canAct) {
+            if (currentEnemy && currentEnemy.hp > 0) await enemyTurnAsync();
+            return; 
+        }
 
-    if (hasStatus(player, 'silence')) {
-        logNarrative(`🤐 <span style="color:#bba98c;">[침묵]</span> 마력이 봉인되어 궁극기를 구사할 수 없습니다!`, 'combat', 'system');
-        return;
-    }
+        if (hasStatus(player, 'silence')) {
+            logNarrative(`🤐 <span style="color:#bba98c;">[침묵]</span> 마력이 봉인되어 궁극기를 구사할 수 없습니다!`, 'combat', 'system');
+            return;
+        }
 
-    if (hasStatus(player, 'confusion') && Math.random() < 0.30) {
-        isProcessingTurn = true; setCombatButtonsDisabled(true);
-        try {
+        if (hasStatus(player, 'confusion') && Math.random() < 0.30) {
             let selfDmg = Math.floor(getPlayerAtk() * 0.8);
             player.hp = Math.max(1, player.hp - selfDmg);
             showFloatingText(selfDmg, 'damage', true);
             await appendLogAsync(`🌀 <span style="color:#c485e0; font-weight:bold;">[혼란]</span> 환각에 빠져 자신을 공격했습니다! <span class="combat-damage">${selfDmg}</span> 자해 피해!`, 'combat', 'player');
-            updateUI(); await enemyTurnAsync(); return;
-        } finally { setCombatButtonsDisabled(false); isProcessingTurn = false; }
-    }
+            updateUI(); 
+            if (currentEnemy && currentEnemy.hp > 0) await enemyTurnAsync(); 
+            return;
+        }
 
-    if (player.ultimateCooldown > 0) return;
-    isProcessingTurn = true; setCombatButtonsDisabled(true); player.ultimateCooldown = 4;
-    
-    try {
+        if (player.ultimateCooldown > 0) return;
+        player.ultimateCooldown = 4;
+        
         combatTurnCount++;
         const box = document.getElementById("narrative-log");
         const divider = document.createElement("div");
@@ -1503,6 +1519,10 @@ async function playerUltimate() {
             currentEnemy.hp = Math.max(0, currentEnemy.hp - res.dmg);
             showFloatingText(res.dmg, 'critical', false);
             await appendLogAsync(`🛡️ 적의 방어력을 완전히 무시하며 <span class="combat-damage">${res.dmg}</span> 피해! (남은 HP: ${currentEnemy.hp}/${currentEnemy.maxHp})`, 'reward', 'player');
+            
+            // [추가됨] 기절 부여
+            applyStatus(currentEnemy, 'stun', 1);
+            await appendLogAsync(`💫 강렬한 뇌진탕으로 적이 기절했습니다!`, 'reward', 'player');
         } 
         else if (jobGroup === "mage") {
             await appendLogAsync(`💥 <strong style="color:var(--accent-blue); font-size:16px;">[궁극기: 초신성 폭발]</strong> 대기를 뒤흔드는 연쇄 마법 폭발!`, 'system', 'player');
@@ -1537,7 +1557,12 @@ async function playerUltimate() {
         updateUI();
         if (currentEnemy.hp <= 0) { await winCombat(); return; }
         await enemyTurnAsync();
-    } finally { setCombatButtonsDisabled(false); isProcessingTurn = false; }
+        
+    } finally { 
+        // 락 해제
+        setCombatButtonsDisabled(false); 
+        isProcessingTurn = false; 
+    }
 }
 
 async function tryFlee() {
