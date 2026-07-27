@@ -494,7 +494,10 @@ const CHAPTERS = [
 
 const PASSIVE_SKILLS = {
     "전사": { name: "철갑 요새", desc: "받는 모든 피해량이 10% 감소합니다." },
-    "성기사": { name: "신성한 오라", desc: "방어력의 40%만큼 최종 공격력이 상승합니다." },
+    "성기사": { 
+    name: "신성한 오라", 
+    desc: "방어력의 40%만큼 최종 공격력이 상승하며, 적에게 피격 시 (본인 레벨 × 5 + 체력(CON) × 3)의 신성한 반사 피해를 입힙니다." 
+},
     "광전사": { name: "끓어오르는 피", desc: "체력이 80% 이하부터 30%까지 낮아질수록 공격력이 최대 50% 증가합니다." },
     "마법사": { name: "마력 응축", desc: "주문력(마법 공격력)이 15% 증가합니다." },
     "원소술사": { name: "원소 메아리", desc: "스킬 사용 시 20% 확률로 MP 소모를 무시하며, 주문력이 추가 15% 증가합니다." },
@@ -1629,7 +1632,23 @@ async function enemyTurnAsync() {
     updateUI();
     
     await appendLogAsync(`🩸 <span class="combat-damage">${mitigated}</span>의 피해를 입었습니다! (남은 HP: ${player.hp}/${getMaxHp()})`, 'combat', 'enemy');
+
+    if (mitigated > 0 && player.job === '성기사' && player.tier >= 2 && currentEnemy.hp > 0) {
+    // 반사 데미지 공식: 레벨 * 5 + 최종 CON * 3 (자유롭게 조정 가능)
+    let reflectDmg = Math.floor(player.level * 5 + getFinalCon() * 3);
     
+    currentEnemy.hp = Math.max(0, currentEnemy.hp - reflectDmg);
+    showFloatingText(reflectDmg, 'damage', false);
+    
+    await appendLogAsync(`✨ <span style="color:var(--accent-gold); font-weight:bold;">[신성한 오라 반사]</span> 빛의 방패가 적에게 <span class="combat-damage">${reflectDmg}</span>의 신성 피해를 반사했습니다! (남은 HP: ${currentEnemy.hp}/${currentEnemy.maxHp})`, 'reward', 'player');
+    updateUI();
+    
+    // 반사 데미지로 적이 사망했을 경우 전투 승리 처리
+    if (currentEnemy.hp <= 0) { 
+        await winCombat(); 
+        return; 
+    }
+}
     if (mitigated > 0 && currentEnemy.mType && currentEnemy.mType !== 'normal') {
         if (Math.random() < 0.30) {
             let duration = ['stun', 'freeze', 'sleep'].includes(currentEnemy.mType) ? 1 : 3;
