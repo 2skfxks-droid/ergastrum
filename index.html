@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>《에르가스트룸: 왕국의 맹세》 - 정통 다크 판타지 로그라이크</title>
+    <title>《에르가스트룸: 왕국의 맹세 -시즌1-》 - 정통 다크 판타지 로그라이크</title>
     <link rel="icon" href="data:,">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/nagoshiashumari/Rpg-Awesome@1.0.1/css/rpg-awesome.min.css">
@@ -186,7 +186,7 @@
             <button class="btn-mini" id="btn-lang-ko" onclick="window.game.setLanguage('ko')" style="border-color:var(--accent-gold); color:var(--accent-gold); font-weight:bold;">KR</button>
             <button class="btn-mini" id="btn-lang-en" onclick="window.game.setLanguage('en')">EN</button>
         </div>
-        <h1 id="intro-title">《에르가스트룸: 왕국의 맹세》</h1>
+        <h1 id="intro-title">《에르가스트룸: 왕국의 맹세 -시즌1-》</h1>
         <p id="intro-desc">나만의 아이디와 비밀번호로 로그인하여 어느 컴퓨터에서나 모험을 이어가세요.</p>
         <input type="text" id="player-id-input" class="intro-input" placeholder="사용할 아이디 (예: hero123)" maxlength="15">
         <input type="password" id="player-pw-input" class="intro-input" placeholder="비밀번호" maxlength="15">
@@ -198,7 +198,7 @@
     <header>
         <div style="display:flex; align-items:center; gap:15px;">
             <button class="btn-mini" onclick="window.game.openChatModal()" style="background:linear-gradient(to bottom, #2a3b4a, #151d24); border-color:var(--accent-blue); padding:6px 10px;"><i class="ra ra-speech-bubble"></i> 주점 채팅</button>
-            <div class="game-title">《에르가스트룸: 왕국의 맹세》</div>
+            <div class="game-title">《에르가스트룸: 왕국의 맹세 -시즌1-》</div>
         </div>
         <div class="header-menu">
             <button class="btn-mini" onclick="window.game.manualServerSave()" style="background:linear-gradient(to bottom, #1e3b20, #0f2411);"><i class="ra ra-save"></i> 서버 저장</button>
@@ -375,8 +375,8 @@ function getRuneBonus(statName) {
 }
 
 const i18n_intro = {
-    ko: { title: "《에르가스트룸: 왕국의 맹세》", desc: "나만의 아이디와 비밀번호로 로그인하여 어느 컴퓨터에서나 모험을 이어가세요.", placeholderId: "사용할 아이디 (예: hero123)", placeholderPw: "비밀번호", startBtn: "계정 생성 / 로그인" },
-    en: { title: "《Ergastrum: Oath of the Kingdom》", desc: "Login with your own ID and password to continue your adventure on any computer.", placeholderId: "Enter ID (e.g., hero123)", placeholderPw: "Password", startBtn: "Register / Login" }
+    kko: { title: "《에르가스트룸: 왕국의 맹세 -시즌1-》", desc: "나만의 아이디와 비밀번호로 로그인하여 어느 컴퓨터에서나 모험을 이어가세요.", placeholderId: "사용할 아이디 (예: hero123)", placeholderPw: "비밀번호", startBtn: "계정 생성 / 로그인" },
+    en: { title: "《Ergastrum: Oath of the Kingdom -Season 1-》", desc: "Login with your own ID and password to continue your adventure on any computer.", placeholderId: "Enter ID (e.g., hero123)", placeholderPw: "Password", startBtn: "Register / Login" }
 };
 
 let currentIntroLang = 'ko';
