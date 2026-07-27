@@ -1499,7 +1499,7 @@ async function playerUltimate() {
         
         if (jobGroup === "warrior") {
             await appendLogAsync(`💥 <strong style="color:var(--accent-red); font-size:16px;">[궁극기: 태산명동참]</strong> 대지를 가르는 거대한 검기!`, 'system', 'player');
-            let res = calculateCombatDamage(getPlayerAtk() * 3.5, false, currentEnemy, false, 1.0); 
+            let res = calculateCombatDamage(getPlayerAtk() * 5.5, false, currentEnemy, false, 1.0); 
             currentEnemy.hp = Math.max(0, currentEnemy.hp - res.dmg);
             showFloatingText(res.dmg, 'critical', false);
             await appendLogAsync(`🛡️ 적의 방어력을 완전히 무시하며 <span class="combat-damage">${res.dmg}</span> 피해! (남은 HP: ${currentEnemy.hp}/${currentEnemy.maxHp})`, 'reward', 'player');
