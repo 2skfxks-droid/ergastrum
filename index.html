@@ -1872,8 +1872,9 @@ function getItemIcon(item) {
     return `<i class="ra ${iconClass}" style="${colorStyle}"></i>`;
 }
 
-function openRuneSocketModal(gearInvIdx) {
-    let gear = player.inventory[gearInvIdx];
+function openRuneSocketModal(targetType, targetKey) {
+    // targetType이 'equip'이면 장착 장비에서, 아니면 인벤토리에서 장비를 찾습니다.
+    let gear = targetType === 'equip' ? player.equipment[targetKey] : player.inventory[targetKey];
     if (!gear || gear.type !== 'gear') return;
     if (gear.maxSockets === 0) { alert("이 장비에는 뚫린 소켓이 없습니다!"); return; }
 
@@ -1887,7 +1888,7 @@ function openRuneSocketModal(gearInvIdx) {
         gear.sockets.forEach((rune, rIdx) => {
             html += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(20,18,16,0.8); border:1px solid var(--border-aged); padding:8px; margin-bottom:6px; border-radius:3px;">
                 <span class="grade-${rune.grade}" style="font-size:13px;">💎 [${rune.name}] (${rune.label})</span>
-                <button class="btn-mini" style="background:#4a2424;" onclick="window.game.removeRuneFromGear(${gearInvIdx}, ${rIdx})">제거</button>
+                <button class="btn-mini" style="background:#4a2424;" onclick="window.game.removeRuneFromGear('${targetType}', '${targetKey}', ${rIdx})">제거</button>
             </div>`;
         });
     }
@@ -1902,18 +1903,20 @@ function openRuneSocketModal(gearInvIdx) {
                 let rInvIdx = player.inventory.indexOf(rune);
                 html += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,12,10,0.8); border:1px solid var(--border-aged); padding:8px; margin-bottom:6px; border-radius:3px;">
                     <span class="grade-${rune.grade}" style="font-size:13px;">💎 ${rune.name} (${rune.label})</span>
-                    <button class="btn-mini" style="background:#2a4a2a; border-color:#4a8a4a;" onclick="window.game.equipRuneToGear(${gearInvIdx}, ${rInvIdx})">장착</button>
+                    <button class="btn-mini" style="background:#2a4a2a; border-color:#4a8a4a;" onclick="window.game.equipRuneToGear('${targetType}', '${targetKey}', ${rInvIdx})">장착</button>
                 </div>`;
             });
         }
     }
 
-    html += `<button class="btn-choice full-width" style="justify-content:center; margin-top:15px;" onclick="window.game.closeModal(); window.game.openInventory();">돌아가기</button>`;
+    // 장착 중인 아이템이면 스탯창으로, 인벤토리 아이템이면 인벤토리로 돌아갑니다.
+    let backAction = targetType === 'equip' ? "window.game.openStatModal();" : "window.game.openInventory();";
+    html += `<button class="btn-choice full-width" style="justify-content:center; margin-top:15px;" onclick="window.game.closeModal(); ${backAction}">돌아가기</button>`;
+    
     showModal(html);
 }
-
-function equipRuneToGear(gearInvIdx, runeInvIdx) {
-    let gear = player.inventory[gearInvIdx];
+function equipRuneToGear(targetType, targetKey, runeInvIdx) {
+    let gear = targetType === 'equip' ? player.equipment[targetKey] : player.inventory[targetKey];
     let rune = player.inventory[runeInvIdx];
     if (!gear || !rune) return;
 
@@ -1924,20 +1927,19 @@ function equipRuneToGear(gearInvIdx, runeInvIdx) {
     if (rune.count > 1) rune.count--; else player.inventory.splice(runeInvIdx, 1);
 
     logNarrative(`💎 장비 [${gear.name}]에 [${rune.name}]을(를) 장착했습니다!`, "reward", "system");
-    openRuneSocketModal(gearInvIdx);
+    openRuneSocketModal(targetType, targetKey);
     updateUI();
     autoSave();
 }
-
-function removeRuneFromGear(gearInvIdx, runeIdx) {
-    let gear = player.inventory[gearInvIdx];
+function removeRuneFromGear(targetType, targetKey, runeIdx) {
+    let gear = targetType === 'equip' ? player.equipment[targetKey] : player.inventory[targetKey];
     if (!gear || !gear.sockets) return;
 
     let removedRune = gear.sockets.splice(runeIdx, 1)[0];
     addItemToInventory({ ...removedRune, count: 1 });
 
     logNarrative(`🔧 장비에서 [${removedRune.name}]을(를) 회수했습니다.`, "system", "system");
-    openRuneSocketModal(gearInvIdx);
+    openRuneSocketModal(targetType, targetKey);
     updateUI();
     autoSave();
 }
@@ -2118,7 +2120,7 @@ function renderInventoryModal() {
         if (item.type === 'gear') {
             html += `<button class="btn-choice" style="flex:1; text-align:center; padding:8px;" onclick="window.game.equipItem(${selectedInvIdx})">착용</button>`;
             if (item.maxSockets > 0) {
-                html += `<button class="btn-choice" style="flex:1; text-align:center; padding:8px; background:linear-gradient(to bottom, #153b3b, #0b1f1f);" onclick="window.game.openRuneSocketModal(${selectedInvIdx})">소켓 관리</button>`;
+                html += `<button class="btn-choice" style="flex:1; text-align:center; padding:8px; background:linear-gradient(to bottom, #153b3b, #0b1f1f);" onclick="window.game.openRuneSocketModal('inv', ${selectedInvIdx})">소켓 관리</button>`;
             }
             html += `<button class="btn-choice" style="flex:1; text-align:center; padding:8px; background:linear-gradient(to bottom, #2b2b2b, #151515);" onclick="window.game.toggleLockItem(${selectedInvIdx})"><i class="ra ${item.isLocked ? "ra-unlock" : "ra-key"}"></i> ${item.isLocked ? "해제" : "잠금"}</button>`;
         } else if (['potion', 'return_talisman', 'return_stone', 'sigil'].includes(item.type)) {
@@ -2309,20 +2311,10 @@ function unequipFromStat(slot) {
 function openRuneSocketFromStat(slot) {
     let item = player.equipment[slot];
     if (!item) return;
-    if (player.inventory.length >= 50) { alert("가방에 빈 공간이 없어 장비를 먼저 해제할 수 없습니다!"); return; }
     
-    addItemToInventory(item);
-    player.equipment[slot] = null;
-    selectedStatGearSlot = null;
-    updateUI();
-    autoSave();
-    
-    let newIdx = player.inventory.lastIndexOf(item);
-    if(newIdx !== -1) {
-        openRuneSocketModal(newIdx);
-    }
+    // 장비를 해제하지 않고, 장착 상태('equip')임을 명시하여 바로 모달을 엽니다.
+    openRuneSocketModal('equip', slot);
 }
-
 function openShoppingStreet() {
     let html = `<h2>상점 거리</h2><p>다양한 상인과 장인들이 모여 있는 곳입니다.</p>`;
     html += `<button class="btn-choice full-width" style="margin-bottom:8px;" onclick="window.game.openInnModal()"><i class="ra ra-heart-bottle"></i> 여관 (휴식 및 회복)</button>`;
