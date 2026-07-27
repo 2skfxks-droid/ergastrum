@@ -312,6 +312,7 @@ let selectedInvIdx = null, currentInvTab = 'all', pendingRelic = null;
 let selectedStatGearSlot = null; 
 let currentTypewriter = null; 
 let isRift = false, riftFloor = 1, currentRiftDebuff = null;
+let isSeason = false, seasonWave = 1, seasonEssenceGained = 0;
 let combatTextDelay = 150, isProcessingTurn = false;
 
 const RUNE_TYPES = [
@@ -872,6 +873,10 @@ function calculateCombatDamage(rawBaseDmg, isMagic, enemy, forceCrit = false, fo
     if (isRift && currentRiftDebuff === '칠흑의 장갑') enemyDef *= 1.4;
     
     let finalIgnoreRate = forceIgnoreRate + getSigilBonus('ignoreDef');
+    let equipWeapon = player.equipment["주무기"];
+    if (equipWeapon && equipWeapon.effect && equipWeapon.effect.type === 'ignoreDef') {
+    finalIgnoreRate += (equipWeapon.effect.val / 100);
+}
     if (finalIgnoreRate > 0) enemyDef = enemyDef * Math.max(0, (1 - finalIgnoreRate));
     
     let finalDmg = Math.max(1, Math.floor(adjustedBase - enemyDef));
@@ -1084,6 +1089,7 @@ function enterHub() {
     let riftBtn = questCleared[9] ? `<button class="btn-choice full-width" style="border-color:#ff77ff; background:linear-gradient(to bottom, #301030, #150515); justify-content:center; margin-top:8px; box-shadow: 0 0 8px rgba(255,119,255,0.4);" onclick="window.game.openRiftMenu()"><i class="ra ra-eye-monster" style="color:#ff77ff;"></i> [엔드 콘텐츠] 심연의 균열 탑 (파밍 및 등반)</button>` : "";
 
     document.getElementById("action-container").innerHTML = `
+        <button class="btn-choice full-width" style="border-color:#ff2222; background:linear-gradient(to bottom, #300505, #150000); justify-content:center; margin-bottom:8px; box-shadow:0 0 10px rgba(255,34,34,0.4);" onclick="window.game.openSeasonMenu()"><i class="ra ra-moon-sun" style="color:#ff2222;"></i> [시즌 1] 핏빛 달의 도래 (시즌 관리인)</button>
         <button class="btn-choice full-width" style="background:linear-gradient(to bottom, #3b1515, #1f0b0b); border-color:var(--accent-red); justify-content:center;" onclick="window.game.showChapterIntroModal(${currentChapterIdx})"><i class="ra ra-crossed-swords"></i> 제 ${currentChapterIdx+1}장 원정 진입 (${ch.name})</button>
         <button class="btn-choice" onclick="window.game.openShoppingStreet()"><i class="ra ra-shop"></i> 상점 거리 (여관/대장간/잡화점)</button>
         <button class="btn-choice" onclick="window.game.exploreVillage()"><i class="ra ra-player"></i> 마을 주변 탐색 (NPC 대화)</button>
@@ -1691,6 +1697,7 @@ async function applyTurnEndRegen() {
 }
 
 async function winCombat() {
+    if (isSeason) { await winSeasonCombat(); return; }
     combatTurnCount = 0;
     await appendLogAsync(`🎉 전투 승리!`, "reward", "system");
     let isBoss = currentEnemy.isBoss;
@@ -1716,6 +1723,11 @@ async function winCombat() {
 
         let medalGain = isBoss ? 5 : 1; player.honor += medalGain;
         await appendLogAsync(`🏆 훈장 ${medalGain}개 획득!`, "reward", "system");
+        let ticketDropChance = isBoss ? 0.015 : 0.002; // 보스 1.5%, 일반 0.2%
+        if (Math.random() < ticketDropChance) {
+            addItemToInventory({ name: "핏빛 초대장", type: "season_ticket", grade: "전설", count: 1 });
+            await appendLogAsync(`🎟️ <span style="color:#ff2222; font-weight:bold; font-size:15px;">[시즌 드랍] 극악의 확률을 뚫고 '핏빛 초대장'을 획득했습니다!</span>`, "reward", "system");
+        }
         
         let baseGold = 2000 + (currentClearedFloor * 250);
         let baseExp = 1800 + (currentClearedFloor * 200);
@@ -1788,6 +1800,22 @@ function retryRiftFloor(floorNum) {
 
 function handleDeath() {
     combatTurnCount = 0;
+ if (isSeason) {
+        logNarrative(`☠️ 수많은 적들에게 둘러싸여 쓰러졌습니다... 획득한 핏빛 달의 정수 절반을 떨어뜨리고 쫓겨납니다.`, "combat", "system");
+        let lostAmount = Math.floor(seasonEssenceGained * 0.5);
+        if (lostAmount > 0) {
+            let req = lostAmount;
+            for (let i = player.inventory.length - 1; i >= 0; i--) {
+                let item = player.inventory[i];
+                if (item.type === 'season_essence') {
+                    if (item.count > req) { item.count -= req; req = 0; break; } 
+                    else { req -= item.count; player.inventory.splice(i, 1); }
+                }
+                if (req <= 0) break;
+            }
+        }
+        isSeason = false; seasonWave = 1; seasonEssenceGained = 0; player.hp = Math.floor(getMaxHp() * 0.3); enterHub();
+    }
     if (isRift) {
         logNarrative(`☠️ 심연에 삼켜졌습니다... 모은 골드의 30%를 잃고 거점으로 쫓겨납니다.`, "combat", "system");
         player.gold = Math.max(0, player.gold - Math.floor(player.gold * 0.3));
@@ -1907,15 +1935,17 @@ function getItemIcon(item) {
         if (item.subType === 'transcendent') iconClass = 'ra-crystals';
         else if (item.subType === 'protect') iconClass = 'ra-shield';
         else iconClass = 'ra-diamond';
-    }
+    } // 👈 이 괄호 밖으로 빼냈습니다.
+    else if (item.type === 'season_ticket') iconClass = 'ra-ticket';
+    else if (item.type === 'season_essence') iconClass = 'ra-water-drop';
     else if (item.type === 'return_talisman') iconClass = 'ra-scroll-unfurled';
     else if (item.type === 'trash') iconClass = 'ra-broken-bone';
     else if (item.type === 'sigil') iconClass = 'ra-flare'; 
     else if (item.type === 'rune') iconClass = 'ra-gem';
+    
     let colorStyle = (item.type === 'stone' && item.subType === 'transcendent') || item.type === 'sigil' || item.type === 'rune' ? 'color:#ff77ff;' : '';
     return `<i class="ra ${iconClass}" style="${colorStyle}"></i>`;
 }
-
 function openRuneSocketModal(targetType, targetKey) {
     // targetType이 'equip'이면 장착 장비에서, 아니면 인벤토리에서 장비를 찾습니다.
     let gear = targetType === 'equip' ? player.equipment[targetKey] : player.inventory[targetKey];
@@ -2190,7 +2220,9 @@ function equipItem(idx) {
     let item = player.inventory[idx]; if (!item || item.type !== 'gear') return;
     if (player.level < item.reqLevel) { alert(`레벨 부족! (요구 Lv.${item.reqLevel})`); return; }
     let isMagicClass = ['마법사', '원소술사', '흑마법사'].includes(player.job);
-    if (item.slot === '주무기') { if (isMagicClass && item.weaponType === '물리') { alert(`마법사는 물리 무기를 낄 수 없습니다.`); return; } if (!isMagicClass && item.weaponType === '마법') { alert(`전사/도적은 마법 무기를 낄 수 없습니다.`); return; } }
+   if (item.slot === '주무기' && item.weaponType !== '공용') { 
+        if (isMagicClass && item.weaponType === '물리') { alert(`마법사는 물리 무기를 낄 수 없습니다.`); return; } 
+        if (!isMagicClass && item.weaponType === '마법') { alert(`전사/도적은 마법 무기를 낄 수 없습니다.`); return; } }
     if (player.equipment[item.slot]) addItemToInventory(player.equipment[item.slot]);
     player.equipment[item.slot] = { ...item, count: 1 };
     if (item.count > 1) item.count--; else player.inventory.splice(idx, 1);
@@ -3112,6 +3144,226 @@ function executeSocketExpansion(targetType, targetKey) {
     updateUI();
     autoSave();
 }
+// ==================== [시즌 1: 핏빛 달의 도래] 로직 ====================
+
+function generateSeasonWeapon() {
+    return {
+        name: "핏빛 달의 대검", type: "gear", slot: "주무기", weaponType: "공용", grade: "균열",
+        reqLevel: 1, price: 500000, count: 1, isLocked: true, 
+        maxSockets: 3, sockets: [],
+        atk: 300, matk: 300, baseAtk: 300, baseMatk: 300, def: 0, baseDef: 0,
+        enhance: 0, // 👈 대장간 일반 강화 수치 (+0부터 시작)
+        seasonLevel: 1, exp: 0, // 👈 고대 제련소 전용 레벨 (Lv.1 ~ 30)
+        options: [
+            { type: 'str', val: 50 }, { type: 'dex', val: 50 }, { type: 'int', val: 50 }, { type: 'con', val: 50 }
+        ],
+        effect: { type: 'ignoreDef', label: '파멸의 전조 (방/마저 무시)', val: 15 }
+    };
+}
+
+function openSeasonMenu() {
+    let t = getStoneCount('season_ticket'), e = getStoneCount('season_essence');
+    let html = `<h2><i class="ra ra-moon-sun"></i> [시즌 1] 핏빛 달의 도래</h2>`;
+    html += `<div style="background:rgba(20,0,0,0.6); border:1px solid #ff2222; padding:12px; border-radius:4px; margin-bottom:12px; text-align:center; box-shadow:0 0 10px rgba(255,34,34,0.3);">
+        <span style="color:var(--text-main); font-size:13.5px;">핏빛 초대장: <strong style="color:#ff77ff;">${t}</strong> 개 | 핏빛 달의 정수: <strong style="color:#ff2222;">${e}</strong> 개</span>
+    </div>`;
+    
+    html += `<button class="btn-choice full-width stat-alert" style="background:linear-gradient(to bottom, #3b1010, #1a0505); border-color:#ff2222; justify-content:center; margin-bottom:15px; padding:15px;" onclick="window.game.startSeasonDungeon()">
+        <i class="ra ra-bleeding-eye" style="color:#ff2222;"></i> 핏빛 무한 던전 진입 (초대장 1장 소모)
+    </button>`;
+    
+    html += `<h3>시즌 관리인 상점 및 고대 제련소</h3>`;
+    html += `<button class="btn-choice full-width" style="justify-content:center; margin-bottom:6px; border-color:var(--accent-gold);" onclick="window.game.openAncientForge()">
+        <i class="ra ra-anvil" style="color:var(--accent-gold);"></i> 고대 제련소 (정수를 소모하여 시즌 무기 레벨업)
+    </button>`;
+    html += `<button class="btn-choice full-width" style="justify-content:center; margin-bottom:15px;" onclick="window.game.buyPitySeasonWeapon()">
+        <i class="ra ra-sword" style="color:#ff2222;"></i> [천장] 핏빛 달의 대검 확정 구매 (정수 500개)
+    </button>`;
+    
+    html += `<button class="btn-choice full-width" style="justify-content:center;" onclick="window.game.closeModal(); window.game.enterHub();">돌아가기</button>`;
+    showModal(html);
+}
+
+function buyPitySeasonWeapon() {
+    let e = getStoneCount('season_essence');
+    if (e < 500) { alert(`핏빛 달의 정수가 부족합니다! (보유: ${e}/500)`); return; }
+    if (player.inventory.length >= 50) { alert("가방이 가득 찼습니다!"); return; }
+    if (confirm("핏빛 달의 정수 500개를 소모하여 [핏빛 달의 대검]을 구매하시겠습니까?")) {
+        let req = 500;
+        for (let i = player.inventory.length - 1; i >= 0; i--) {
+            let item = player.inventory[i];
+            if (item.type === 'season_essence') {
+                if (item.count > req) { item.count -= req; req = 0; break; } 
+                else { req -= item.count; player.inventory.splice(i, 1); }
+            }
+            if (req <= 0) break;
+        }
+        addItemToInventory(generateSeasonWeapon());
+        alert("🎉 [핏빛 달의 대검]을 획득했습니다!");
+        openSeasonMenu(); updateUI(); autoSave();
+    }
+}
+
+function openAncientForge() {
+    let e = getStoneCount('season_essence');
+    let html = `<h2>고대 제련소</h2><p style="font-size:12.5px; color:var(--text-muted);">핏빛 달의 정수(보유: <strong style="color:#ff2222;">${e}</strong>개)를 주입하여 핏빛 무기를 100% 성장시킵니다.</p>`;
+    
+    let renderForgeSlot = (gear, isEquip, idxOrSlot) => {
+        if (!gear || gear.name !== "핏빛 달의 대검") return "";
+        
+        let currentLv = gear.seasonLevel || 1; // 시즌 레벨 불러오기
+        let reqExp = 100 + ((currentLv - 1) * 50);
+        let isMax = currentLv >= 30;
+        let p = isMax ? 100 : Math.floor((gear.exp / reqExp) * 100);
+        
+        return `<div style="background:rgba(20,18,16,0.9); border:1px solid #ff2222; padding:10px; margin-bottom:8px; border-radius:4px; box-shadow:inset 0 0 10px rgba(0,0,0,0.5);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                <span class="grade-균열" style="font-weight:bold;">[${isEquip ? '장착중' : '인벤'}] ${gear.name} ${gear.enhance ? `<span style="color:var(--accent-gold);">(+${gear.enhance})</span>` : ''} <span style="color:#ff2222;">Lv.${currentLv}</span></span>
+                <button class="btn-mini" style="background:#3b1010; border-color:#ff2222; ${isMax ? 'opacity:0.5;' : ''}" ${isMax ? 'disabled' : `onclick="window.game.injectEssence('${isEquip}', '${idxOrSlot}')"`}>정수 주입(1개)</button>
+            </div>
+            <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:4px;">공격력/주문력: ${gear.atk} | 힘/민/지/체: +${gear.options[0].val}</div>
+            <div class="bar-wrap" style="height:10px; margin:0;"><div class="bar-fill" style="background:linear-gradient(90deg, #591111, #ff2222); width:${p}%;"></div></div>
+            <div style="font-size:10px; text-align:right; color:var(--text-main); margin-top:2px;">${isMax ? 'MAX LEVEL' : `EXP: ${gear.exp} / ${reqExp}`}</div>
+        </div>`;
+    };
+
+    let found = false;
+    let w = player.equipment['주무기'];
+    if (w && w.name === "핏빛 달의 대검") { html += renderForgeSlot(w, true, '주무기'); found = true; }
+    player.inventory.forEach((item, idx) => {
+        if (item.name === "핏빛 달의 대검") { html += renderForgeSlot(item, false, idx); found = true; }
+    });
+
+    if (!found) html += `<p style="font-size:13px; color:var(--text-muted); text-align:center; padding:20px;">보유 중인 핏빛 달의 대검이 없습니다.</p>`;
+    
+    html += `<button class="btn-choice full-width" style="justify-content:center; margin-top:15px;" onclick="window.game.openSeasonMenu()">뒤로 가기</button>`;
+    showModal(html);
+}
+
+function injectEssence(isEquipStr, idxOrSlot) {
+    let e = getStoneCount('season_essence');
+    if (e < 1) { alert("핏빛 달의 정수가 없습니다!"); return; }
+    
+    let gear = isEquipStr === 'true' ? player.equipment[idxOrSlot] : player.inventory[idxOrSlot];
+    
+    // (안전장치) 과거 코드로 획득한 장비 호환 처리
+    if (gear.seasonLevel === undefined) { gear.seasonLevel = gear.enhance || 1; gear.enhance = 0; }
+    if (!gear || gear.seasonLevel >= 30) return;
+
+    // 정수 1개 차감
+    let req = 1;
+    for (let i = player.inventory.length - 1; i >= 0; i--) {
+        let item = player.inventory[i];
+        if (item.type === 'season_essence') {
+            item.count--; if (item.count <= 0) player.inventory.splice(i, 1);
+            break;
+        }
+    }
+
+    gear.exp += 10;
+    let reqExp = 100 + ((gear.seasonLevel - 1) * 50);
+    
+    if (gear.exp >= reqExp && gear.seasonLevel < 30) {
+        gear.exp -= reqExp;
+        gear.seasonLevel++;
+        gear.baseAtk += 20; gear.atk += 20;
+        gear.baseMatk += 20; gear.matk += 20;
+        gear.options.forEach(opt => opt.val += 8);
+        alert(`🌟 [핏빛 달의 대검]이 Lv.${gear.seasonLevel}로 레벨 업 했습니다! (공격력 +20, 올스탯 +8)`);
+    }
+
+    openAncientForge(); updateUI(); autoSave();
+}
+
+function startSeasonDungeon() {
+    let t = getStoneCount('season_ticket');
+    if (t < 1) { alert("핏빛 초대장이 부족합니다!"); return; }
+
+    // 초대장 1개 차감
+    for (let i = player.inventory.length - 1; i >= 0; i--) {
+        let item = player.inventory[i];
+        if (item.type === 'season_ticket') { item.count--; if (item.count <= 0) player.inventory.splice(i, 1); break; }
+    }
+
+    closeModal();
+    isSeason = true; gameState = "DUNGEON"; seasonWave = 1; seasonEssenceGained = 0;
+    logNarrative(`🩸 <span style="color:#ff2222; font-weight:bold;">[시즌 던전: 무한의 핏빛 달]</span> 입구를 지키는 문이 닫혔습니다. 살아남아 탈출하십시오.`, "system", "system");
+    promptNextSeasonWave(); updateUI(); autoSave();
+}
+
+function promptNextSeasonWave() {
+    const container = document.getElementById("action-container");
+    let isBoss = (seasonWave % 5 === 0);
+    
+    let html = `<div class="full-width" style="text-align:center; color:#ff2222; font-weight:bold; margin-bottom:5px;">[ 무한 던전 웨이브: ${seasonWave} ]</div>
+        <div class="full-width" style="text-align:center; font-size:12px; color:var(--text-muted); margin-bottom:10px;">이번 입장 획득 정수: ${seasonEssenceGained}개</div>`;
+        
+    html += `<button class="btn-choice full-width stat-alert" style="background:linear-gradient(to bottom, #3b1010, #1a0505); border-color:#ff2222; justify-content:center;" onclick="window.game.triggerSeasonCombat()">
+        <i class="ra ${isBoss ? 'ra-eye-monster' : 'ra-crossed-swords'}" style="color:#ff2222;"></i> ${seasonWave} 웨이브 적과 전투
+    </button>`;
+    
+    html += `<button class="btn-choice full-width" style="justify-content:center; margin-top:10px;" onclick="window.game.escapeSeasonDungeon()">
+        <i class="ra ra-run"></i> 획득한 전리품을 챙겨 거점으로 무사 귀환
+    </button>`;
+    
+    container.innerHTML = html;
+    updateUI();
+}
+
+function triggerSeasonCombat() {
+    gameState = "COMBAT"; combatTurnCount = 0;
+    let isBoss = (seasonWave % 5 === 0);
+    
+    // 복리 스케일링
+    let baseHp = 10000; let baseAtk = 400;
+    let hp = Math.floor(baseHp * Math.pow(1.10, seasonWave - 1));
+    let atk = Math.floor(baseAtk * Math.pow(1.07, seasonWave - 1));
+    let def = Math.floor(200 + (seasonWave * 20));
+
+    if (isBoss) { hp *= 2; atk = Math.floor(atk * 1.5); }
+
+    let mType = isBoss ? 'armor_break' : 'bleed';
+    let name = isBoss ? `[핏빛 보스] 달의 수호자 (Wave ${seasonWave})` : `[핏빛 몬스터] 광기어린 그림자 (Wave ${seasonWave})`;
+
+    currentEnemy = { name, hp, maxHp: hp, atk, def, matk: atk, mres: def, isBoss, mType, statuses: [] };
+    player.statuses = [];
+    
+    logNarrative(`🩸 <span style="color:#ff2222;">[Wave ${seasonWave}] 전투 시작!</span>`, "combat", "system");
+    renderCombatActions(); updateUI(); autoSave();
+}
+
+function escapeSeasonDungeon() {
+    logNarrative(`🏃‍♂️ 핏빛 달의 던전에서 무사히 빠져나와 거점으로 귀환했습니다! (정수 ${seasonEssenceGained}개 보존)`, "reward", "system");
+    isSeason = false; seasonWave = 1; seasonEssenceGained = 0;
+    enterHub();
+}
+
+async function winSeasonCombat() {
+    combatTurnCount = 0;
+    await appendLogAsync(`🎉 웨이브 ${seasonWave} 돌파 성공!`, "reward", "system");
+    let isBoss = currentEnemy.isBoss;
+
+    // 핏빛 달의 정수 드랍
+    let essenceChance = isBoss ? 0.70 : 0.20;
+    if (Math.random() < essenceChance) {
+        addItemToInventory({ name: "핏빛 달의 정수", type: "season_essence", grade: "영웅", count: 1 });
+        seasonEssenceGained++;
+        await appendLogAsync(`🩸 [시즌 보상] '핏빛 달의 정수' 1개 획득! (현재 런 획득량: ${seasonEssenceGained}개)`, "reward", "system");
+    }
+
+    // 극악의 확률 시즌 무기 드랍 (0.5%)
+    if (Math.random() < 0.005) {
+        addItemToInventory(generateSeasonWeapon());
+        await appendLogAsync(`🌟🌟 <span style="color:#ff2222; font-size:18px; font-weight:bold; text-shadow:0 0 10px #ff0000;">[기적의 드랍] 시즌 종결 무기 '핏빛 달의 대검'을 획득했습니다!!!</span>`, "reward", "system");
+    }
+
+    player.gold += Math.floor(3000 * Math.pow(1.05, seasonWave));
+    player.exp += Math.floor(2500 * Math.pow(1.05, seasonWave));
+    checkLevelUp();
+
+    seasonWave++; currentEnemy = null; gameState = "DUNGEON";
+    promptNextSeasonWave(); autoSave();
+}
 window.game = {
     setLanguage, closeModal, loginOrRegister, manualServerSave, loadGame, startAdventure,
     openChatModal, sendChatMessage,
@@ -3130,7 +3382,9 @@ window.game = {
     openRiftMenu, adjustRiftFloor, startRift, promptNextRiftExploration, triggerRiftCombat, escapeRift, retryRiftFloor, openSigilRelicSelect, openSigilOptionSelect, applySigil,
     openRuneSocketModal, equipRuneToGear, removeRuneFromGear,
     autoSynthesizeRunes,
-    openSocketExpansionModal, executeSocketExpansion
+    openSocketExpansionModal, executeSocketExpansion,
+    openSeasonMenu, buyPitySeasonWeapon, openAncientForge, injectEssence,
+    startSeasonDungeon, promptNextSeasonWave, triggerSeasonCombat, escapeSeasonDungeon
 };
 
 window.onload = function() { 
