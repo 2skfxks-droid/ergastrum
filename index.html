@@ -3022,6 +3022,16 @@ function openSocketExpansionModal() {
 
     let hasExpandableGear = false;
     
+    // 시각적 소켓 표시 헬퍼 함수 (예: ◆◇◇)
+    const renderSocketDots = (maxSockets) => {
+        let dots = "";
+       for (let i = 0; i < 3; i++) {
+            if (i < maxSockets) dots += `<span style="color:var(--accent-green); font-weight:900; margin-right:4px; text-shadow:0 0 4px var(--accent-green);">○</span>`;
+            else dots += `<span style="color:var(--accent-red); font-weight:900; margin-right:4px; opacity:0.6;">×</span>`;
+        }
+        return dots;
+    };
+
     // 장착 중인 장비 목록
     html += `<h3 style="margin-bottom:5px;">장착 중인 장비</h3>`;
     EQUIPMENT_SLOTS.forEach(slot => {
@@ -3029,8 +3039,13 @@ function openSocketExpansionModal() {
         if (eq && eq.maxSockets < 3) {
             hasExpandableGear = true;
             html += `<div style="background:rgba(20,18,16,0.9); border:1px solid var(--border-aged); padding:10px; margin-bottom:6px; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
-                <div><span class="grade-${eq.grade}">[${slot}] ${eq.name}</span><br><span style="font-size:11.5px; color:var(--text-muted);">현재 소켓: ${eq.maxSockets}/3</span></div>
-                <button class="btn-mini" style="background:#2b152b; border-color:#ff77ff; color:#ff77ff; padding:6px 10px;" onclick="window.game.executeSocketExpansion('equip', '${slot}')">확장 시도</button>
+                <div>
+                    <span class="grade-${eq.grade}" style="font-weight:bold;">[${slot}] ${eq.name}</span><br>
+                    <span style="font-size:12px; color:var(--text-muted); display:inline-block; margin-top:4px;">
+                        뚫린 소켓: ${renderSocketDots(eq.maxSockets)} <span style="font-size:11px;">(${eq.maxSockets}/3)</span>
+                    </span>
+                </div>
+                <button class="btn-mini" style="background:#2b152b; border-color:#ff77ff; color:#ff77ff; padding:8px 12px;" onclick="window.game.executeSocketExpansion('equip', '${slot}')">확장 시도</button>
             </div>`;
         }
     });
@@ -3041,8 +3056,13 @@ function openSocketExpansionModal() {
         if (item.type === 'gear' && item.maxSockets < 3) {
             hasExpandableGear = true;
             html += `<div style="background:rgba(20,18,16,0.9); border:1px solid var(--border-aged); padding:10px; margin-bottom:6px; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
-                <div><span class="grade-${item.grade}">[인벤] ${item.name}</span><br><span style="font-size:11.5px; color:var(--text-muted);">현재 소켓: ${item.maxSockets}/3</span></div>
-                <button class="btn-mini" style="background:#2b152b; border-color:#ff77ff; color:#ff77ff; padding:6px 10px;" onclick="window.game.executeSocketExpansion('inv', ${idx})">확장 시도</button>
+                <div>
+                    <span class="grade-${item.grade}" style="font-weight:bold;">[인벤] ${item.name}</span><br>
+                    <span style="font-size:12px; color:var(--text-muted); display:inline-block; margin-top:4px;">
+                        뚫린 소켓: ${renderSocketDots(item.maxSockets)} <span style="font-size:11px;">(${item.maxSockets}/3)</span>
+                    </span>
+                </div>
+                <button class="btn-mini" style="background:#2b152b; border-color:#ff77ff; color:#ff77ff; padding:8px 12px;" onclick="window.game.executeSocketExpansion('inv', ${idx})">확장 시도</button>
             </div>`;
         }
     });
