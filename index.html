@@ -209,7 +209,7 @@
     <div class="panel" id="player-status-panel">
         <div class="section-box" style="text-align: center;">
             <div class="section-title" style="text-align: left;">모험가 정보</div>
-            <i class="ra ra-hood" style="font-size: 65px; color: var(--text-main); margin: 10px 0; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8)); display:inline-block;"></i>
+            <img id="ui-player-img" src="" alt="Player" style="width: 140px; height: 140px; object-fit: contain; image-rendering: pixelated; margin: 5px 0 15px 0; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.9)); background: transparent; border: none;">
             <div class="stat-row"><span>이름/직업</span> <span id="ui-job">[방랑자] 모험가</span></div>
             <div class="stat-row"><span>레벨 / EXP</span> <span>Lv.<span id="ui-level">1</span> (<span id="ui-exp">0</span>/<span id="ui-maxexp">100</span>)</span></div>
             <div class="bar-wrap">
@@ -288,6 +288,18 @@
 <div id="modal-overlay" class="modal-overlay hidden"><div class="modal-box" id="modal-content"></div></div>
 
 <script type="module">
+const IMG_PLAYER = {
+    "방랑자": "./images/wanderer.png",
+    "전사": "./images/warrior.png",
+    "성기사": "./images/paladin.png",
+    "광전사": "./images/berserker.png",
+    "마법사": "./images/mage.png",
+    "원소술사": "./images/element.png",
+    "흑마법사": "./images/warlock.png",
+    "도적": "./images/rogue.png",
+    "암살자": "./images/assassin.png",
+    "의적": "./images/thief.png"
+};
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -1069,6 +1081,7 @@ function applyLoadedData(saveData) {
 }
 
 function updateUI() {
+    document.getElementById("ui-player-img").src = IMG_PLAYER[player.job] || IMG_PLAYER["방랑자"];
     document.getElementById("ui-job").innerText = `[${player.job}] ${player.name}`;
     document.getElementById("ui-level").innerText = player.level;
     document.getElementById("ui-exp").innerText = player.exp; document.getElementById("ui-maxexp").innerText = player.maxExp;
