@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>에르가스트룸: 왕국의 맹세 - V23.13 DOT/저주 지속시간 개선</title>
+    <title>에르가스트룸: 왕국의 맹세 - V23.15 대장간 재련 이전</title>
     <link rel="icon" href="data:,">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/nagoshiashumari/Rpg-Awesome@1.0.1/css/rpg-awesome.min.css">
@@ -2398,7 +2398,8 @@ function getPlayerCritDmg() {
     return Math.min(260, base);
 }
 function getAccessoryEffect(effectType) {
-    let total = 0; ["목걸이", "반지1", "반지2"].forEach(slot => { let eq = player.equipment[slot]; if (eq && eq.effect && eq.effect.type === effectType) total += eq.effect.val; }); 
+    let total = 0; ["목걸이", "반지1", "반지2"].forEach(slot => { let eq = player.equipment[slot]; if (eq && eq.effect && eq.effect.type === effectType) total += eq.effect.val; });
+    if (effectType === 'mpRegen') total += getGearOptionEffect('resourceRegen');
     if (effectType === 'vampire') total += getRuneBonus('vampire');
     return total;
 }
@@ -4565,6 +4566,12 @@ async function applyTurnEndRegen() {
         let mpHealed = Math.max(1, Math.min(10, Math.floor(getMaxMp() * (mpRegenRate / 100))));
         player.mp = Math.min(getMaxMp(), player.mp + mpHealed);
         regenLog.push(`마력 ${mpHealed}`);
+    } else if (!jobUsesMp() && ['전사','성기사','광전사','도적','암살자','의적'].includes(player.job) && mpRegenRate > 0) {
+        const amount=Math.max(1,Math.min(10,Math.floor(mpRegenRate)));
+        const before=getJobResourceValue();
+        setJobResource(before+amount);
+        const gained=Math.max(0,getJobResourceValue()-before);
+        if(gained>0) regenLog.push(`${getJobResourceLabel()} ${gained}`);
     }
     
     if (regenLog.length > 0) { updateUI(); await appendLogAsync(`✨ <span style="color:var(--accent-green);">&#91;턴 회복&#93;</span> ${regenLog.join(", ")} 자동 회복!`, 'reward', 'player'); }
@@ -4773,7 +4780,7 @@ function getRiftOptionScale(floor) {
 // ============================================================
 // v10 아이템 옵션 시스템
 // - 모든 장비 부위에서 모든 옵션이 등장할 수 있음.
-// - 좋은 '조합' 자체가 희귀하도록 중복 옵션은 금지.
+// - V23.14: 동일 옵션 중복 허용. 위치별 추첨 풀과 옵션 잠금 재련 적용.
 // - 균열은 층이 높을수록 옵션 티어/수치 상한이 상승.
 // - 직업 전용 옵션도 공용 드랍 풀에 포함되어 다른 직업에게는 꽝,
 //   맞는 직업에게는 진짜 당첨 아이템이 되도록 설계.
@@ -4809,6 +4816,7 @@ const GLOBAL_GEAR_OPTION_DEFS = {
     damageReduction:{ label:'받는 피해 감소', suffix:'%', min:[0.2,0.4,0.7,1,1.4], max:[0.6,0.9,1.3,1.8,2.5], desc:'방어력 계산 후 받는 최종 피해를 감소시킵니다.' },
     healTaken:{ label:'회복 효과', suffix:'%', min:[1,2,3,5,7], max:[3,5,8,11,15], desc:'회복으로 얻는 HP가 증가합니다.' },
     regen:{ label:'전투 중 회복', suffix:'%', min:[0.1,0.2,0.35,0.5,0.7], max:[0.3,0.5,0.8,1.1,1.5], desc:'턴 종료 시 최대 HP 비례 회복량이 증가합니다.' },
+    resourceRegen:{ label:'전투 자원 회복', suffix:'%', min:[0.5,1,1.5,2.2,3], max:[1.5,2.5,3.5,5,7], desc:'턴 종료 시 기본 직업 자원을 회복합니다. 마법 계열은 MP, 전사/도적 계열은 기본 자원을 회복하며 영혼·원소 구체·표식·속임수는 제외됩니다.' },
 
     statusChance:{ label:'상태이상 확률', suffix:'%', min:[0.7,1.3,2.2,3.2,4.5], max:[2,3.5,5,7,9], desc:'화상·중독·빙결 등 상태이상을 부여할 확률이 증가합니다.' },
     statusDamage:{ label:'상태이상 피해', suffix:'%', min:[1,2.5,4,6,8], max:[4,6,9,12,16], desc:'상태이상 관련 피해가 증가합니다.' },
@@ -4871,6 +4879,7 @@ const GEAR_NAME_THEMES = {
     statusResist:      { prefix:'정화의', score:76, label:'상태이상 저항' },
     healTaken:         { prefix:'치유의', score:76, label:'회복 효과' },
     regen:             { prefix:'재생의', score:76, label:'전투 중 회복' },
+    resourceRegen:     { prefix:'순환의', score:98, label:'전투 자원 회복' },
     evade:             { prefix:'회피의', score:76, label:'회피' },
 
     // 기본 능력치
@@ -5233,46 +5242,46 @@ function getNormalOptionTier(reqLevel, gradeIdx) {
     return 0;
 }
 
-function rollGearOptionValue(type, tierIdx) {
-    const d = getGearOptionDef(type);
-    const i = Math.max(0, Math.min(4, tierIdx));
-    const lo = Number(d.min?.[i] ?? 1), hi = Number(d.max?.[i] ?? lo);
-    let value = lo + Math.random() * (hi - lo);
-    if (d.kind === 'flat') value = Math.round(value);
-    else value = Math.round(value * 10) / 10;
+function getOptionQualityFloorByGrade(grade) {
+    const floors={'일반':0,'정예':0.10,'희귀':0.20,'영웅':0.35,'전설':0.50,'균열':0.60};
+    return Math.max(0,Math.min(.95,Number(floors[grade]??0)));
+}
+function rollGearOptionValue(type,tierIdx,grade='일반') {
+    const d=getGearOptionDef(type),i=Math.max(0,Math.min(4,tierIdx));
+    const rawLo=Number(d.min?.[i]??1),hi=Number(d.max?.[i]??rawLo);
+    const lo=rawLo+(hi-rawLo)*getOptionQualityFloorByGrade(grade);
+    let value=lo+Math.random()*(hi-lo);
+    if(d.kind==='flat') value=Math.round(value); else value=Math.round(value*10)/10;
     return value;
 }
-
-function getGearOptionTierLabel(tierIdx) {
-    return `T${5 - Math.max(0, Math.min(4, tierIdx))}`;
+function getGearOptionTierLabel(tierIdx){return `T${5-Math.max(0,Math.min(4,tierIdx))}`;}
+function getAllGearOptionTypes(){return Object.keys(GLOBAL_GEAR_OPTION_DEFS);}
+function isGearOptionForCurrentJob(def,job=player.job){
+    if(!def||!def.job)return false;
+    if(def.job===job)return true;
+    return def.job==='도적/의적'&&['도적','의적'].includes(job);
 }
-
-function getAllGearOptionTypes() {
-    return Object.keys(GLOBAL_GEAR_OPTION_DEFS);
+function getPublicGearOptionTypes(){return getAllGearOptionTypes().filter(t=>!getGearOptionDef(t).job);}
+function getCurrentJobGearOptionTypes(){return getAllGearOptionTypes().filter(t=>isGearOptionForCurrentJob(getGearOptionDef(t)));}
+function getGearOptionPoolForSlot(optionIndex){
+    const pub=getPublicGearOptionTypes();
+    if(optionIndex<=1)return pub;
+    if(optionIndex===2)return pub.concat(getCurrentJobGearOptionTypes());
+    return getAllGearOptionTypes();
 }
-
-function generateRandomGearOptions(gear, gradeIdx, chIdx) {
-    // 희귀도에 따른 기본 옵션 개수. 균열은 4옵 확정이며 완벽 조합 자체가 희귀.
-    let optionCount = gradeIdx <= 1 ? 0 : (gradeIdx === 2 ? 1 : (gradeIdx === 3 ? 2 : (gradeIdx === 4 ? 3 : 4)));
-    if (gear.grade === '균열') optionCount = 4;
-
-    const tierIdx = gear.grade === '균열'
-        ? getRiftOptionTier(gear.riftFloor || getRiftEquivalentFloor(chIdx))
-        : getNormalOptionTier(gear.reqLevel, gradeIdx);
-
-    const pool = getAllGearOptionTypes();
-    const chosen = [];
-    while (chosen.length < optionCount && chosen.length < pool.length) {
-        const type = pool[Math.floor(Math.random() * pool.length)];
-        if (!chosen.includes(type)) chosen.push(type);
-    }
-
-    gear.options = chosen.map(type => ({
-        type,
-        val: rollGearOptionValue(type, tierIdx),
-        optionTier: tierIdx,
-        tierLabel: getGearOptionTierLabel(tierIdx)
-    }));
+function rollGearOptionForSlot(gear,tierIdx,optionIndex){
+    const pool=getGearOptionPoolForSlot(optionIndex);
+    const type=pool[Math.floor(Math.random()*pool.length)];
+    return {type,val:rollGearOptionValue(type,tierIdx,gear.grade||'일반'),optionTier:tierIdx,tierLabel:getGearOptionTierLabel(tierIdx)};
+}
+function generateRandomGearOptions(gear,gradeIdx,chIdx){
+    let optionCount=gradeIdx<=1?0:(gradeIdx===2?1:(gradeIdx===3?2:(gradeIdx===4?3:4)));
+    if(gear.grade==='균열')optionCount=4;
+    const tierIdx=gear.grade==='균열'?getRiftOptionTier(gear.riftFloor||getRiftEquivalentFloor(chIdx)):getNormalOptionTier(gear.reqLevel,gradeIdx);
+    gear.options=[];
+    for(let i=0;i<optionCount;i++)gear.options.push(rollGearOptionForSlot(gear,tierIdx,i));
+    gear.reforgeLocks=new Array(optionCount).fill(false);
+    gear.reforgeCount=0;
 }
 
 function getGearOptionEffect(type) {
@@ -5774,6 +5783,47 @@ function applySigil(itemIdx, relicIdx, optType) {
     closeModal(); updateUI(); autoSave();
 }
 
+
+function getGearReforgeTier(gear){
+    const gi=Math.max(0,EQUIPMENT_GRADES.indexOf(gear.grade||'일반'));
+    return gear.grade==='균열'?getRiftOptionTier(gear.riftFloor||1):getNormalOptionTier(gear.reqLevel||1,gi);
+}
+function ensureGearReforgeState(gear){
+    if(!gear||gear.type!=='gear')return;
+    const n=Array.isArray(gear.options)?gear.options.length:0;
+    if(!Array.isArray(gear.reforgeLocks))gear.reforgeLocks=new Array(n).fill(false);
+    gear.reforgeLocks=gear.reforgeLocks.slice(0,n);
+    while(gear.reforgeLocks.length<n)gear.reforgeLocks.push(false);
+    gear.reforgeCount=Math.max(0,Number(gear.reforgeCount)||0);
+}
+function getReforgeLockCount(gear){ensureGearReforgeState(gear);return gear.reforgeLocks.filter(Boolean).length;}
+function getReforgeCost(gear){
+    ensureGearReforgeState(gear);
+    const locks=getReforgeLockCount(gear);
+    if(locks>=gear.options.length)return Infinity;
+    const mult=[1,2,5,12][Math.min(3,locks)]||12;
+    const gi=Math.max(0,EQUIPMENT_GRADES.indexOf(gear.grade||'일반'));
+    const base=Math.max(100,Math.round(((gear.reqLevel||1)*18+120+gi*90)/10)*10);
+    return base*mult;
+}
+function toggleReforgeOptionLock(itemIdx,optIdx){
+    const gear=player.inventory[itemIdx];if(!gear||gear.type!=='gear'||!gear.options?.[optIdx])return;
+    ensureGearReforgeState(gear);gear.reforgeLocks[optIdx]=!gear.reforgeLocks[optIdx];renderInventoryModal();autoSave();
+}
+function executeGearReforge(itemIdx){
+    const gear=player.inventory[itemIdx];if(!gear||gear.type!=='gear'||!gear.options?.length)return;
+    ensureGearReforgeState(gear);
+    const locks=getReforgeLockCount(gear);
+    if(locks>=gear.options.length){alert('모든 옵션이 잠겨 있어 재련할 수 없습니다.');return;}
+    const cost=getReforgeCost(gear);
+    if(player.gold<cost){alert(`골드가 부족합니다. 재련 비용: ${cost.toLocaleString()} G`);return;}
+    if(!confirm(`[${gear.name}] 재련\n잠금 ${locks}개 / 재추첨 ${gear.options.length-locks}개\n비용 ${cost.toLocaleString()} G\n\n잠기지 않은 옵션의 종류와 수치가 모두 다시 추첨됩니다.`))return;
+    player.gold-=cost;
+    const tier=getGearReforgeTier(gear);
+    for(let i=0;i<gear.options.length;i++)if(!gear.reforgeLocks[i])gear.options[i]=rollGearOptionForSlot(gear,tier,i);
+    gear.reforgeCount++;syncGearNameWithOptions(gear);renderInventoryModal();updateUI();autoSave();
+}
+
 function renderInventoryModal() {
     let html = `<h2 style="display:flex; justify-content:space-between; align-items:flex-end;">
         <span>🎒 인벤토리</span><span style="font-size:14px;"><span style="color:var(--accent-gold); margin-right:15px;"><i class="ra ra-gold-bar"></i> ${player.gold} G</span><span style="color:var(--accent-red);"><i class="ra ra-medal"></i> ${player.honor} 개</span></span>
@@ -5883,12 +5933,14 @@ function renderInventoryModal() {
                 }
                 if (it.options && it.options.length > 0) {
                     res += `<div style="margin-top:6px; padding-top:4px; border-top:1px dashed var(--border-aged);">`;
-                    it.options.forEach(o => {
-                        const d = getGearOptionDef(o.type);
-                        const suffix = d.suffix || '';
-                        const tier = o.tierLabel ? `<span style="color:#8b8178;font-size:9px;">[${o.tierLabel}]</span> ` : '';
-                        const job = d.job ? `<span style="color:#d5a5ed;font-size:9px;"> (${d.job})</span>` : '';
-                        res += `<p title="${String(d.desc||'').replace(/"/g,'&quot;')}" style="font-size:11.5px;margin:3px 0;color:${d.job?'#d8b2e8':'var(--text-main)'};">${tier}${d.label}${job} <strong style="color:#79e897;">+${o.val}${suffix}</strong></p>`;
+                    ensureGearReforgeState(it);
+                    it.options.forEach((o,optIdx) => {
+                        const d=getGearOptionDef(o.type),suffix=d.suffix||'';
+                        const tier=o.tierLabel?`<span style="color:#8b8178;font-size:9px;">[${o.tierLabel}]</span> `:'';
+                        const job=d.job?`<span style="color:#d5a5ed;font-size:9px;"> (${d.job})</span>`:'';
+                        const locked=!!it.reforgeLocks?.[optIdx];
+                        const lockMark=locked?` <span title="대장간 재련에서 잠긴 옵션" style="color:var(--accent-gold);font-size:10px;">🔒</span>`:'';
+                        res+=`<p title="${String(d.desc||'').replace(/"/g,'&quot;')}" style="font-size:11.5px;margin:3px 0;color:${d.job?'#d8b2e8':'var(--text-main)'};">${tier}${d.label}${job} <strong style="color:#79e897;">+${o.val}${suffix}</strong>${lockMark}</p>`;
                     });
                     res += `</div>`;
                 }
@@ -5916,7 +5968,7 @@ function renderInventoryModal() {
             if (item.maxSockets > 0) {
                 html += `<button class="btn-choice" style="flex:1; text-align:center; padding:8px; background:linear-gradient(to bottom, #153b3b, #0b1f1f);" onclick="window.game.openRuneSocketModal('inv', ${selectedInvIdx})">소켓 관리</button>`;
             }
-            html += `<button class="btn-choice" style="flex:1; text-align:center; padding:8px; background:linear-gradient(to bottom, #2b2b2b, #151515);" onclick="window.game.toggleLockItem(${selectedInvIdx})"><i class="ra ${item.isLocked ? "ra-unlock" : "ra-key"}"></i> ${item.isLocked ? "해제" : "잠금"}</button>`;
+html += `<button class="btn-choice" style="flex:1; text-align:center; padding:8px; background:linear-gradient(to bottom, #2b2b2b, #151515);" onclick="window.game.toggleLockItem(${selectedInvIdx})"><i class="ra ${item.isLocked ? "ra-unlock" : "ra-key"}"></i> ${item.isLocked ? "해제" : "잠금"}</button>`;
         } else if (['potion', 'return_talisman', 'return_stone', 'sigil'].includes(item.type)) {
             html += `<button class="btn-choice" style="flex:1; text-align:center; padding:8px;" onclick="window.game.useItemInventory(${selectedInvIdx})">사용</button>`;
         }
@@ -6123,7 +6175,7 @@ function openRuneSocketFromStat(slot) {
 function openShoppingStreet() {
     let html = `<h2>상점 거리</h2><p>다양한 상인과 장인들이 모여 있는 곳입니다.</p>`;
     html += `<button class="btn-choice full-width" style="margin-bottom:8px;" onclick="window.game.openInnModal()"><i class="ra ra-heart-bottle"></i> 여관 (휴식 및 회복)</button>`;
-    html += `<button class="btn-choice full-width" style="margin-bottom:8px;" onclick="window.game.openBlacksmith()"><i class="ra ra-anvil"></i> 대장간 (무기/방어구 구입 및 강화)</button>`;
+    html += `<button class="btn-choice full-width" style="margin-bottom:8px;" onclick="window.game.openBlacksmith()"><i class="ra ra-anvil"></i> 대장간 (구입/강화/재련)</button>`;
     html += `<button class="btn-choice full-width" style="margin-bottom:15px;" onclick="window.game.openGeneralStore()"><i class="ra ra-potion"></i> 잡화점 (소모품/강화석 구입)</button>`;
     html += `<button class="btn-choice full-width" style="justify-content:center;" onclick="window.game.closeModal()">돌아가기</button>`;
     showModal(html);
@@ -6152,6 +6204,98 @@ function restAtInn(cost) {
     } else { alert("골드 부족!"); }
 }
 
+
+let blacksmithReforgeTarget = null;
+
+function getBlacksmithReforgeGear(targetType,targetKey){
+    if(targetType==='equip') return player.equipment[targetKey]||null;
+    const idx=Number(targetKey);
+    return Number.isInteger(idx)?(player.inventory[idx]||null):null;
+}
+function openBlacksmithReforge(){
+    let html=`<h2>⚒️ 장비 재련</h2>
+        <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">
+        유지할 옵션을 잠그고 나머지 옵션을 재추첨합니다.<br>
+        동일 옵션 중복 가능 · 잠금이 많을수록 비용이 증가합니다.
+        </p>
+        <div style="background:rgba(35,27,15,.65);border:1px solid #8b6b32;padding:8px;margin-bottom:12px;font-size:12px;">
+        잠금 비용 배율: <strong>0개 ×1 / 1개 ×2 / 2개 ×5 / 3개 ×12</strong><br>
+        <span style="color:#c9b889;">4개 모두 잠그면 재련할 수 없습니다.</span>
+        </div>`;
+    const targets=[];
+    EQUIPMENT_SLOTS.forEach(slot=>{
+        const g=player.equipment[slot];
+        if(g&&g.type==='gear'&&g.options?.length) targets.push({type:'equip',key:slot,gear:g,label:`장착 · ${slot}`});
+    });
+    player.inventory.forEach((g,idx)=>{
+        if(g&&g.type==='gear'&&g.options?.length) targets.push({type:'inv',key:idx,gear:g,label:'인벤토리'});
+    });
+    if(!targets.length){
+        html+=`<p style="text-align:center;color:var(--text-muted);padding:20px;">재련 가능한 옵션 장비가 없습니다.</p>`;
+    }else{
+        targets.forEach(t=>{
+            ensureGearReforgeState(t.gear);
+            const locks=getReforgeLockCount(t.gear), cost=getReforgeCost(t.gear);
+            html+=`<button class="btn-choice full-width" style="margin-bottom:6px;text-align:left;" onclick="window.game.openBlacksmithReforgeDetail('${t.type}','${String(t.key).replace(/'/g,"\\'")}')">
+                <span><small style="color:#a99b87;">${t.label}</small><br><strong class="grade-${t.gear.grade}">[${t.gear.grade}] ${t.gear.name}</strong></span>
+                <span style="margin-left:auto;font-size:11px;">🔒 ${locks} · ${Number.isFinite(cost)?cost.toLocaleString()+'G':'재련 불가'}</span>
+            </button>`;
+        });
+    }
+    html+=`<button class="btn-choice full-width" style="justify-content:center;margin-top:14px;" onclick="window.game.closeModal();window.game.openBlacksmith();">뒤로 가기</button>`;
+    showModal(html);
+}
+function openBlacksmithReforgeDetail(targetType,targetKey){
+    const gear=getBlacksmithReforgeGear(targetType,targetKey);
+    if(!gear||gear.type!=='gear'||!gear.options?.length){openBlacksmithReforge();return;}
+    ensureGearReforgeState(gear);
+    blacksmithReforgeTarget={type:targetType,key:targetKey};
+    const locks=getReforgeLockCount(gear),cost=getReforgeCost(gear),allLocked=locks>=gear.options.length;
+    let html=`<h2>⚒️ 옵션 재련</h2>
+        <h3 class="grade-${gear.grade}" style="margin-bottom:4px;">[${gear.grade}] ${gear.name}</h3>
+        <p style="font-size:12px;color:var(--text-muted);">보유 골드: <strong style="color:var(--accent-gold);">${player.gold.toLocaleString()} G</strong></p>`;
+    gear.options.forEach((o,i)=>{
+        const d=getGearOptionDef(o.type),locked=!!gear.reforgeLocks[i];
+        html+=`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(20,18,16,.82);border:1px solid ${locked?'#b48a3c':'var(--border-aged)'};padding:9px;margin-bottom:7px;border-radius:4px;">
+            <div style="font-size:12px;">${o.tierLabel?`<span style="color:#8b8178;">[${o.tierLabel}]</span> `:''}${d.label}${d.job?` <span style="color:#d5a5ed;">(${d.job})</span>`:''}
+            <strong style="color:#79e897;">+${o.val}${d.suffix||''}</strong></div>
+            <button class="btn-mini" style="${locked?'border-color:var(--accent-gold);color:var(--accent-gold);':''}" onclick="window.game.toggleBlacksmithReforgeLock('${targetType}','${String(targetKey).replace(/'/g,"\\'")}',${i})">${locked?'🔒 잠금됨':'🔓 잠그기'}</button>
+        </div>`;
+    });
+    html+=`<div style="background:rgba(35,27,15,.65);border:1px solid #8b6b32;padding:10px;margin-top:12px;text-align:center;">
+        <div>잠금 <strong>${locks}</strong>개 · 재추첨 <strong>${gear.options.length-locks}</strong>개</div>
+        <div style="margin-top:4px;">재련 비용: <strong style="color:var(--accent-gold);font-size:16px;">${allLocked?'재련 불가':cost.toLocaleString()+' G'}</strong></div>
+    </div>
+    <button class="btn-choice full-width" style="justify-content:center;margin-top:10px;background:linear-gradient(to bottom,#4a3518,#24180b);border-color:#b48a3c;${allLocked?'opacity:.45;':''}" ${allLocked?'disabled':''} onclick="window.game.executeBlacksmithReforge('${targetType}','${String(targetKey).replace(/'/g,"\\'")}')">⚒️ 재련 실행</button>
+    <button class="btn-choice full-width" style="justify-content:center;margin-top:7px;" onclick="window.game.openBlacksmithReforge()">장비 목록으로</button>`;
+    showModal(html);
+}
+function toggleBlacksmithReforgeLock(targetType,targetKey,optIdx){
+    const gear=getBlacksmithReforgeGear(targetType,targetKey);
+    if(!gear||!gear.options?.[optIdx])return;
+    ensureGearReforgeState(gear);
+    gear.reforgeLocks[optIdx]=!gear.reforgeLocks[optIdx];
+    autoSave();
+    openBlacksmithReforgeDetail(targetType,targetKey);
+}
+function executeBlacksmithReforge(targetType,targetKey){
+    const gear=getBlacksmithReforgeGear(targetType,targetKey);
+    if(!gear||!gear.options?.length)return;
+    ensureGearReforgeState(gear);
+    const locks=getReforgeLockCount(gear);
+    if(locks>=gear.options.length){alert('모든 옵션이 잠겨 있어 재련할 수 없습니다.');return;}
+    const cost=getReforgeCost(gear);
+    if(player.gold<cost){alert(`골드가 부족합니다. 재련 비용: ${cost.toLocaleString()} G`);return;}
+    if(!confirm(`[${gear.name}] 재련\n잠금 ${locks}개 / 재추첨 ${gear.options.length-locks}개\n비용 ${cost.toLocaleString()} G\n\n잠기지 않은 옵션의 종류와 수치가 모두 다시 추첨됩니다.`))return;
+    player.gold-=cost;
+    const tier=getGearReforgeTier(gear);
+    for(let i=0;i<gear.options.length;i++) if(!gear.reforgeLocks[i]) gear.options[i]=rollGearOptionForSlot(gear,tier,i);
+    gear.reforgeCount++;
+    syncGearNameWithOptions(gear);
+    updateUI();autoSave();
+    openBlacksmithReforgeDetail(targetType,targetKey);
+}
+
 function openBlacksmith() {
     let w = getStoneCount('weapon'), a = getStoneCount('armor'), t = getStoneCount('transcendent'), p = getStoneCount('protect');
     let html = `<h2>대장간</h2><p>보유 골드: <strong style="color:var(--accent-gold);">${player.gold} G</strong></p>
@@ -6166,6 +6310,7 @@ function openBlacksmith() {
     
     html += `<h3 style="margin-top:10px;">강화소 및 특수 아이템</h3>`;
     html += `<button class="btn-choice full-width" style="justify-content:center; margin-bottom:6px; background:linear-gradient(to bottom, #2c241b, #1a1510);" onclick="window.game.openEnhanceModal()"><i class="ra ra-anvil"></i> 장비 강화소 열기</button>`;
+    html += `<button class="btn-choice full-width" style="justify-content:center; margin-bottom:6px; background:linear-gradient(to bottom, #4a3518, #24180b); border-color:#b48a3c;" onclick="window.game.openBlacksmithReforge()"><i class="ra ra-hammer"></i> 장비 재련소 열기</button>`;
     html += `<button class="btn-choice full-width" style="justify-content:center; margin-bottom:6px; background:linear-gradient(to bottom, #3b103b, #1a051a); border-color:#ff77ff;" onclick="window.game.openSocketExpansionModal()"><i class="ra ra-gem" style="color:#ff77ff;"></i> 장비 소켓 뚫기 (초월의 파편 소모)</button>`;
     html += `<button class="btn-choice full-width" style="justify-content:center; margin-bottom:15px; border-color:#e5b840;" onclick="window.game.buyStone('장비 파괴 보호권', 'protect', 50000)"><i class="ra ra-shield" style="color:#e5b840;"></i> 장비 파괴 보호권 구입 (50,000 G)</button>`;
 
@@ -7208,10 +7353,10 @@ window.game = {
     setLanguage, closeModal, loginOrRegister, manualServerSave, loadGame, startAdventure, debugCombatState,
     openChatModal, sendChatMessage,
     openTalentModal, selectTalentNode, focusTalentSector, learnConstellationNode, resetSoulConstellation, switchTalentPreset, zoomPoeTree, centerPoeTree,
-    openInventory, setInventoryTab, selectInventoryItem, equipItem, unequip, toggleLockItem, discardItem, useItem, useItemInventory, useItemInCombatModal,
+    openInventory, setInventoryTab, selectInventoryItem, equipItem, unequip, toggleLockItem, toggleReforgeOptionLock, executeGearReforge, discardItem, useItem, useItemInventory, useItemInCombatModal,
     openStatModal, addStatModal, selectStatGear, unequipFromStat, openRuneSocketFromStat,
     enterHub, showChapterIntroModal, skipTypewriter, finishTypewriter, confirmStartDungeon, selectChapterModal,
-    exploreVillage, openShoppingStreet, openInnModal, restAtInn, openBlacksmith, openGeneralStore,
+    exploreVillage, openShoppingStreet, openInnModal, restAtInn, openBlacksmith, openBlacksmithReforge, openBlacksmithReforgeDetail, toggleBlacksmithReforgeLock, executeBlacksmithReforge, openGeneralStore,
     openQuestModal, completeChapterQuest, openJobModal, setJob, openAltarModal, buyAltar,
     openRelics, moveToStorage, equipFromStorage, dropStorageRelic, dropRelic, openRelicChoiceModal, replaceRelic,
     openBulletinBoard, refreshBulletinBoard, acceptSubQuest, abandonSubQuest, completeSubQuest,
