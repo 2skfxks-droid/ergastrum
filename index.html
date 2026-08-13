@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>《에르가스트룸: 왕국의 맹세 -시즌1-》 - 정통 다크 판타지 로그라이크</title>
+    <title>에르가스트룸: 왕국의 맹세 - V23.13 DOT/저주 지속시간 개선</title>
     <link rel="icon" href="data:,">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/nagoshiashumari/Rpg-Awesome@1.0.1/css/rpg-awesome.min.css">
@@ -4055,7 +4055,7 @@ const ACTUAL_JOB_SKILLS = {
   {id:'p_ult',n:'천상의 심판',k:'ultimate',coef:2.30,mcoef:2.70,cost:80,cd:4,unlock:45,icon:'ra-holy-grail',desc:'공격력 230% + 주문력 270%. 현재 보호막을 피해로 전환하고 모두 소모.'}
  ],
  '광전사':[
-  {id:'b_basic',n:'난폭한 베기',k:'basic',coef:1.10,res:8,bleedChance:.60,icon:'ra-axe',desc:'공격력 110% 피해. 분노 8 획득, 60% 확률 출혈.'},
+  {id:'b_basic',n:'난폭한 베기',k:'basic',coef:1.10,res:8,bleedChance:.60,bleed:4,icon:'ra-axe',desc:'공격력 110% 피해. 분노 8 획득, 60% 확률로 출혈 4턴을 부여합니다.'},
   {id:'b_skull',n:'두개골 분쇄',k:'skill',coef:1.75,cost:20,cd:2,armorBreak:2,cond:'bleed',bonus:.20,icon:'ra-skull-crack',desc:'공격력 175%. 출혈 대상 +20%, 방어 파괴 2턴.'},
   {id:'b_rend',n:'상처 찢기',k:'skill',coef:1.78,cost:35,cd:2,cond:'bleed',bonus:.20,rend:true,icon:'ra-bleeding-eye',desc:'공격력 178%. 출혈 대상 +20%, 출혈을 즉시 한 번 더 터뜨림.'},
   {id:'b_thirst',n:'피의 갈증',k:'skill',coef:1.90,cost:25,cd:2,cond:'bleed',condCoef:2.40,healDmg:.07,healCap:.12,unlock:30,icon:'ra-dripping-blade',desc:'기본 190%; 출혈 대상 240%. 피해의 7% 회복(최대 HP 12% 한도).'},
@@ -4067,17 +4067,17 @@ const ACTUAL_JOB_SKILLS = {
   {id:'e_basic',n:'원소 화살',k:'basic',coef:1.05,mpGain:.06,orb:'least',icon:'ra-crystal-wand',desc:'주문력 105% 피해. 최대 MP 6% 회복, 가장 적은 원소 구체 +1.'},
   {id:'e_lance',n:'원소 관통창',k:'skill',coef:1.95,mpCost:20,pen:.15,orbEffect:true,icon:'ra-lightning-sword',desc:'MP 20. 주문력 195%. 15% 관통. 보유 구체 종류에 따라 추가 효과.'},
   {id:'e_burst',n:'원소 폭발',k:'skill',coef:2.65,mpCost:32,cd:2,orbScale:.025,icon:'ra-explosion',desc:'MP 32. 주문력 265%. 보유 구체 1개당 피해 +2.5%.'},
-  {id:'e_fire',n:'화염 폭발',k:'skill',coef:1.55,mpCost:16,burn:3,orb:'fire',unlock:30,icon:'ra-fire',desc:'MP 16. 주문력 155%. 화상 3턴, 화염 구체 +1.'},
+  {id:'e_fire',n:'화염 폭발',k:'skill',coef:1.55,mpCost:16,burn:4,orb:'fire',unlock:30,icon:'ra-fire',desc:'MP 16. 주문력 155%. 화상 4턴, 화염 구체 +1.'},
   {id:'e_ice',n:'빙결 창',k:'skill',coef:1.40,mpCost:16,cd:2,atbEnemy:-20,orb:'ice',unlock:35,icon:'ra-ice-cube',desc:'MP 16. 주문력 140%. 적 ATB -20%, 냉기 구체 +1.'},
   {id:'e_chain',n:'연쇄 번개',k:'skill',coef:1.70,mpCost:20,cd:1,hits:3,orb:'lightning',unlock:40,icon:'ra-lightning-trio',desc:'MP 20. 주문력 170% 피해를 3회. 번개 구체 +1.'},
   {id:'e_ult',n:'원소 대붕괴',k:'ultimate',coef:3.00,orbUlt:.45,cd:4,unlock:45,icon:'ra-super-mushroom',desc:'주문력 300% + 구체 1개당 45%. 모든 구체 소모.'}
  ],
  '흑마법사':[
-  {id:'k_basic',n:'암흑 화살',k:'basic',coef:1.15,mpGain:.05,poisonChance:.30,icon:'ra-death-skull',desc:'주문력 115%. 최대 MP 5% 회복, 30% 확률 중독.'},
-  {id:'k_curse_lance',n:'저주의 창',k:'skill',coef:1.90,mpCost:20,pen:.10,curse:3,cond:'curse',condCoef:2.20,icon:'ra-spear-hook',desc:'MP 20. 주문력 190%. 저주 대상이면 220%. 저주 3턴.'},
+  {id:'k_basic',n:'암흑 화살',k:'basic',coef:1.15,mpGain:.05,poisonChance:.30,poison:4,icon:'ra-death-skull',desc:'주문력 115%. 최대 MP 5% 회복, 30% 확률 중독.'},
+  {id:'k_curse_lance',n:'저주의 창',k:'skill',coef:1.90,mpCost:20,pen:.10,curse:5,cond:'curse',condCoef:2.20,icon:'ra-spear-hook',desc:'MP 20. 주문력 190%. 저주 대상이면 220%. 저주 5턴.'},
   {id:'k_soul_blast',n:'영혼 폭발',k:'skill',coef:1.50,mpCost:28,soulBlast:.70,icon:'ra-burning-skull',desc:'MP 28. 주문력 150% + 영혼 1개당 70%. 보유 영혼 전부 소모.'},
-  {id:'k_weaken',n:'쇠약의 저주',k:'utility',mpCost:16,cd:3,curse:3,armorBreak:3,unlock:30,icon:'ra-broken-skull',desc:'MP 16. 저주/방어 파괴 3턴.'},
-  {id:'k_decay',n:'부패',k:'skill',coef:1.45,mpCost:14,soulCost:1,poison:3,unlock:35,icon:'ra-acid',desc:'MP 14 + 영혼 1. 주문력 145%, 중독 3턴.'},
+  {id:'k_weaken',n:'쇠약의 저주',k:'utility',mpCost:16,cd:3,curse:5,armorBreak:3,unlock:30,icon:'ra-broken-skull',desc:'MP 16. 저주/방어 파괴 3턴.'},
+  {id:'k_decay',n:'부패',k:'skill',coef:1.45,mpCost:14,soulCost:1,poison:4,unlock:35,icon:'ra-acid',desc:'MP 14 + 영혼 1. 주문력 145%, 중독 4턴.'},
   {id:'k_drain',n:'생명 흡수',k:'skill',coef:2.15,soulCost:2,cd:2,cond:'curse',condCoef:2.80,healDmg:.28,healCap:.18,unlock:40,icon:'ra-health',desc:'기본 215%; 저주 대상 280%. 피해의 28% 회복(HP 18% 한도).'},
   {id:'k_ult',n:'심연의 문',k:'ultimate',coef:5.00,soulCost:5,mpCost:34,cd:4,abyss:3,unlock:45,icon:'ra-portal',desc:'MP 34 + 영혼 5. 주문력 500%. 3행동 동안 DOT 추가 피해.'}
  ],
@@ -4189,12 +4189,12 @@ async function playerUseJobSkill(skillId){
   if(s.heal){const h=Math.floor(getMaxHp()*s.heal);healPlayer(h,'skill');showFloatingText(h,'heal',true);const removed=removeOneNegativeStatus();if(removed)await appendLogAsync(`✨ 정화의 빛이 ${STATUS_EFFECTS[removed]?.name||removed}을 제거했습니다.`,'reward','player')}
   if(s.frenzy)m.frenzyTurns=s.frenzy; if(s.fortress)m.fortressTurns=s.fortress; if(s.deathDefy)m.deathDefyTurns=s.deathDefy; if(s.evade)m.evadeBonus=Math.max(m.evadeBonus,s.evade); if(s.atb)playerAtb=Math.min(100,playerAtb+s.atb); if(s.atbEnemy)enemyAtb=Math.max(0,Math.min(100,enemyAtb+s.atbEnemy)); if(s.abyss)m.abyssTurns=s.abyss; if(s.critDmgDebuff)m.critDmgAmpTurns=2;
   if(s.curse){m.curseTurns=Math.max(m.curseTurns,s.curse);applyStatus(currentEnemy,'armor_break',Math.max(1,s.curse))} if(s.armorBreak)applyStatus(currentEnemy,'armor_break',s.armorBreak); if(s.debuff)applyStatus(currentEnemy,'blind',s.debuff);
-  if(s.orb)addOrb(s.orb); if(s.burn)applyStatus(currentEnemy,'burn',s.burn); if(s.poison)applyStatus(currentEnemy,'poison',s.poison); if(s.poisonChance&&Math.random()<s.poisonChance)applyStatus(currentEnemy,'poison',3); if(s.bleedChance&&Math.random()<s.bleedChance)applyStatus(currentEnemy,'bleed',3);
+  if(s.orb)addOrb(s.orb); if(s.burn)applyStatus(currentEnemy,'burn',s.burn); if(s.poison)applyStatus(currentEnemy,'poison',s.poison); if(s.poisonChance&&Math.random()<s.poisonChance)applyStatus(currentEnemy,'poison',(s.poison||4)); if(s.bleedChance&&Math.random()<s.bleedChance)applyStatus(currentEnemy,'bleed',(s.bleed||4));
   if(s.k!=='utility'){
    let base=getPlayerAtk()*(s.coef||0)+getPlayerMatk()*(s.mcoef||0); const magic=(s.mcoef>0)||['마법사','원소술사','흑마법사'].includes(player.job);
    if(s.cond==='armor'&&hasStatus(currentEnemy,'armor_break'))base*=1+(s.bonus||0); if(s.cond==='bleed'&&hasStatus(currentEnemy,'bleed'))base=s.condCoef?getPlayerAtk()*s.condCoef:base*(1+(s.bonus||0)); if(s.cond==='highMp'&&player.mp/getMaxMp()>=.70)base*=1+(s.bonus||0); if(s.cond==='curse'&&m.curseTurns>0&&s.condCoef)base=getPlayerMatk()*s.condCoef; if(s.cond==='debuff'&&hasEnemyDebuff()&&s.condCoef)base=getPlayerAtk()*s.condCoef;
    if(s.cond==='paladinJudgment'){if(hasStatus(currentEnemy,'armor_break'))base*=1.20;if(m.skillShield>=getMaxHp()*.05){m.skillShield-=getMaxHp()*.05;base*=1.20}}
-   if(s.orbScale)base*=1+getOrbCount()*s.orbScale; if(s.orbEffect){const o=m.orbs;if(o.fire)applyStatus(currentEnemy,'burn',2);if(o.ice)enemyAtb=Math.max(0,enemyAtb-10);if(o.lightning)base*=1.08}
+   if(s.orbScale)base*=1+getOrbCount()*s.orbScale; if(s.orbEffect){const o=m.orbs;if(o.fire)applyStatus(currentEnemy,'burn',4);if(o.ice)enemyAtb=Math.max(0,enemyAtb-10);if(o.lightning)base*=1.08}
    if(s.orbUlt){const n=getOrbCount();base=getPlayerMatk()*(s.coef+n*s.orbUlt);m.orbs={fire:0,ice:0,lightning:0}}
    if(s.soulBlast){const n=Math.max(1,m.souls);base=getPlayerMatk()*(s.coef+n*s.soulBlast);m.souls=0}
    if(s.executeMarks){const n=m.jobMarks,er=currentEnemy.hp/currentEnemy.maxHp,per=er<=.25?1.85:er<=.50?1.38:1.00;base=getPlayerAtk()*per*n;m.jobMarks=0}
