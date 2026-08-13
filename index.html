@@ -1705,6 +1705,13 @@ let player = {
     talentTreeVersion: TALENT_TREE_VERSION,
     unlockedNodes: ["center"],
     talentHistory: [],
+    activeTalentPreset: 0,
+    talentPresetVersion: TALENT_TREE_VERSION,
+    talentPresets: [
+        { name: "프리셋 1", unlockedNodes: ["center"], talentHistory: [] },
+        { name: "프리셋 2", unlockedNodes: ["center"], talentHistory: [] },
+        { name: "프리셋 3", unlockedNodes: ["center"], talentHistory: [] }
+    ],
     talents: { offense: 0, defense: 0, chaos: 0 }, 
     statuses: []
 };
@@ -1716,6 +1723,105 @@ function getRelicBonus(type) {
 }
 function getSigilBonus(type) {
     let total = 0; player.relics.forEach(r => { if (r.sigil && r.sigil.type === type) total += r.sigil.val; }); return total;
+}
+
+
+function getTalentPointBudget() {
+    return Math.min(70, Math.max(1, Number(player?.level) || 1));
+}
+
+function getSpentTalentPointsForNodes(nodes) {
+    const ids = Array.isArray(nodes) ? nodes : ['center'];
+    return ids.reduce((sum, id) => {
+        const node = SOUL_CONSTELLATION[id];
+        return sum + (node ? Number(node.cost || 0) : 0);
+    }, 0);
+}
+
+function sanitizeTalentPresetNodes(nodes) {
+    const result = ['center'];
+    for (const id of (Array.isArray(nodes) ? nodes : [])) {
+        if (id === 'center') continue;
+        if (SOUL_CONSTELLATION[id] && !result.includes(id)) result.push(id);
+    }
+    return result;
+}
+
+function ensureTalentPresets() {
+    if (!player) return;
+
+    const treeChanged = player.talentPresetVersion !== TALENT_TREE_VERSION;
+    const currentNodes = sanitizeTalentPresetNodes(player.unlockedNodes);
+    const currentHistory = Array.isArray(player.talentHistory) ? [...player.talentHistory] : [];
+
+    if (treeChanged || !Array.isArray(player.talentPresets) || player.talentPresets.length !== 3) {
+        // 기존 사용자의 현재 빌드는 무조건 1번 프리셋으로 보존.
+        player.talentPresets = [
+            { name:'프리셋 1', unlockedNodes:currentNodes, talentHistory:currentHistory },
+            { name:'프리셋 2', unlockedNodes:['center'], talentHistory:[] },
+            { name:'프리셋 3', unlockedNodes:['center'], talentHistory:[] }
+        ];
+        player.activeTalentPreset = 0;
+        player.talentPresetVersion = TALENT_TREE_VERSION;
+    }
+
+    player.talentPresets = player.talentPresets.slice(0, 3).map((preset, i) => ({
+        name: preset?.name || `프리셋 ${i + 1}`,
+        unlockedNodes: sanitizeTalentPresetNodes(preset?.unlockedNodes),
+        talentHistory: Array.isArray(preset?.talentHistory) ? preset.talentHistory : []
+    }));
+
+    let active = Number(player.activeTalentPreset);
+    if (!Number.isInteger(active) || active < 0 || active > 2) active = 0;
+    player.activeTalentPreset = active;
+}
+
+function syncActiveTalentPreset() {
+    ensureTalentPresets();
+    const idx = player.activeTalentPreset || 0;
+    if (!player.talentPresets?.[idx]) return;
+    player.talentPresets[idx].unlockedNodes = sanitizeTalentPresetNodes(player.unlockedNodes);
+    player.talentPresets[idx].talentHistory = Array.isArray(player.talentHistory) ? [...player.talentHistory] : [];
+}
+
+function loadTalentPresetState(index) {
+    ensureTalentPresets();
+    const preset = player.talentPresets[index];
+    if (!preset) return false;
+
+    player.unlockedNodes = sanitizeTalentPresetNodes(preset.unlockedNodes);
+    player.talentHistory = Array.isArray(preset.talentHistory) ? [...preset.talentHistory] : [];
+
+    const spent = getSpentTalentPointsForNodes(player.unlockedNodes);
+    player.tp = Math.max(0, getTalentPointBudget() - spent);
+    player.activeTalentPreset = index;
+
+    player.hp = Math.min(player.hp, getMaxHp());
+    if (jobUsesMp()) player.mp = Math.min(player.mp, getMaxMp());
+    else player.mp = 0;
+    selectedTalentNodeId = 'center';
+    return true;
+}
+
+function switchTalentPreset(index) {
+    index = Number(index);
+    if (!Number.isInteger(index) || index < 0 || index > 2) return;
+
+    if (gameState === 'COMBAT') {
+        alert('전투 중에는 특성 프리셋을 변경할 수 없습니다.');
+        return;
+    }
+
+    ensureTalentPresets();
+    if (index === player.activeTalentPreset) return;
+
+    syncActiveTalentPreset();
+    if (!loadTalentPresetState(index)) return;
+
+    logNarrative(`🌌 영혼 각인 프리셋을 [프리셋 ${index + 1}]로 변경했습니다.`, 'reward', 'system');
+    updateUI();
+    autoSave();
+    openTalentModal();
 }
 
 function getUnlockedTalentNodes() {
@@ -2628,6 +2734,8 @@ function calculateCombatDamage(rawBaseDmg, isMagic, enemy, forceCrit = false, fo
 
 async function autoSave() {
     if (!currentUserId) return;
+    // V23.8: 현재 편집 중인 특성 프리셋 상태도 같이 저장.
+    syncActiveTalentPreset();
     const saveData = { player, gameState, unlockedChapter, currentChapterIdx, questCleared, dungeonDepth, currentEnemy, isRift, riftFloor };
     try { const playerRef = doc(db, "players", currentUserId); await setDoc(playerRef, saveData, { merge: true }); } catch (e) {}
 }
@@ -2638,6 +2746,37 @@ async function loadGame() {
         const docSnap = await getDoc(doc(db, "players", currentUserId));
         if (docSnap.exists()) { applyLoadedData(docSnap.data()); logNarrative(`☁️ 서버에서 불러오기 성공!`, "reward", "system"); alert("불러오기 완료!"); } else { alert("저장된 데이터 없음."); }
     } catch (e) { alert("오류 발생."); }
+}
+
+
+function migrateResourceRegenItemsV237() {
+    const patchItem = (item) => {
+        if (!item || item.type !== 'gear' || !item.effect || item.effect.type !== 'mpRegen') return false;
+        let changed = false;
+
+        if (item.effect.label !== '매 턴 전투 자원 회복') {
+            item.effect.label = '매 턴 전투 자원 회복';
+            changed = true;
+        }
+
+        // 구형 접두사만 중립적인 접두사로 교체.
+        if (typeof item.name === 'string' && item.name.includes('마나 순환의')) {
+            item.name = item.name.replace('마나 순환의', '순환의');
+            changed = true;
+        }
+        return changed;
+    };
+
+    let changed = false;
+    if (Array.isArray(player?.inventory)) {
+        player.inventory.forEach(item => { if (patchItem(item)) changed = true; });
+    }
+    if (player?.equipment) {
+        EQUIPMENT_SLOTS.forEach(slot => {
+            if (patchItem(player.equipment[slot])) changed = true;
+        });
+    }
+    return changed;
 }
 
 function applyLoadedData(saveData) {
@@ -2673,6 +2812,11 @@ function applyLoadedData(saveData) {
     if(!player.talentHistory) player.talentHistory = [];
     if(!player.talents) player.talents = { offense: 0, defense: 0, chaos: 0 };
     if(!player.statuses) player.statuses = [];
+
+    // V23.8: 기존 사용자의 현재 특성 빌드를 프리셋 1로 자동 이전.
+    ensureTalentPresets();
+    if (!player.talentPresets[player.activeTalentPreset]) player.activeTalentPreset = 0;
+    loadTalentPresetState(player.activeTalentPreset);
     
     const patchGear = (g) => {
         if (!g || g.type !== 'gear') return;
@@ -2687,6 +2831,10 @@ function applyLoadedData(saveData) {
     if (player.inventory) player.inventory.forEach(patchGear);
     if (player.equipment) EQUIPMENT_SLOTS.forEach(s => patchGear(player.equipment[s]));
 
+    // V23.7: 기존 플레이어가 이미 보유/장착 중인 '마력 회복' 아이템도
+    // 새 '전투 자원 회복' 옵션 명칭으로 즉시 마이그레이션.
+    const resourceRegenItemsMigrated = migrateResourceRegenItemsV237();
+
     gameState = saveData.gameState || "HUB"; unlockedChapter = saveData.unlockedChapter || 1; currentChapterIdx = saveData.currentChapterIdx || 0;
     questCleared = saveData.questCleared || new Array(10).fill(false); dungeonDepth = saveData.dungeonDepth || 0; currentEnemy = saveData.currentEnemy || null;
     isRift = saveData.isRift || false; riftFloor = saveData.riftFloor || 1;
@@ -2695,6 +2843,11 @@ function applyLoadedData(saveData) {
     document.getElementById("intro-screen").classList.add("hidden");
     closeModal();
     updateUI();
+
+    // 기존 세이브 아이템을 바꿨다면 서버 저장에도 반영.
+    if (resourceRegenItemsMigrated) {
+        setTimeout(() => { autoSave(); }, 0);
+    }
 
     // 저장 데이터가 전투 중이었다면 버튼만 그리는 것으로는 ATB 타이머가 복구되지 않습니다.
     // 반드시 ATB 루프를 다시 시작해야 전투가 이어집니다.
@@ -2916,7 +3069,7 @@ function updateUI() {
     let goldB = getAccessoryEffect('goldBoost'); let dropB = getAccessoryEffect('dropBoost');
 
     if (hpRegen > 0) accHtml += `<div class="stat-row"><span>턴 체력 회복</span> <span style="color:var(--accent-green);">+${hpRegen}%</span></div>`;
-    if (mpRegen > 0) accHtml += `<div class="stat-row"><span>턴 마력 회복</span> <span style="color:var(--accent-blue);">+${mpRegen}%</span></div>`;
+    if (mpRegen > 0) accHtml += `<div class="stat-row"><span>턴 전투 자원 회복</span> <span style="color:var(--accent-blue);">+${mpRegen}%</span></div>`;
     if (vamp > 0) accHtml += `<div class="stat-row"><span>공격 시 흡혈</span> <span style="color:var(--accent-red);">+${vamp}%</span></div>`;
     if (goldB > 0) accHtml += `<div class="stat-row"><span>골드 획득량</span> <span style="color:var(--accent-gold);">+${goldB}%</span></div>`;
     if (dropB > 0) accHtml += `<div class="stat-row"><span>아이템 드랍률</span> <span style="color:var(--accent-gold);">+${dropB}%</span></div>`;
@@ -3029,7 +3182,18 @@ function getTalentNodeState(node){
 }
 
 function openTalentModal(){
+    ensureTalentPresets();
+    syncActiveTalentPreset();
     const spent=getSpentTalentPoints();
+
+    const presetButtons = player.talentPresets.map((preset, i) => {
+        const pSpent = getSpentTalentPointsForNodes(preset.unlockedNodes);
+        const active = i === player.activeTalentPreset;
+        return `<button class="p7preset ${active ? 'active' : ''}" onclick="window.game.switchTalentPreset(${i})">
+            <strong>${preset.name || `프리셋 ${i+1}`}</strong>
+            <small>${pSpent}/${getTalentPointBudget()} TP${active ? ' · 사용 중' : ''}</small>
+        </button>`;
+    }).join('');
 
     const sectorButtons = POE_SECTORS.map(s => {
         const count = Object.values(SOUL_CONSTELLATION).filter(n => n.branch === s.id && player.unlockedNodes.includes(n.id)).length;
@@ -3105,6 +3269,13 @@ function openTalentModal(){
     .p7lab{position:absolute;transform:translate(-50%,-50%);font-size:18px;font-weight:900;opacity:.48;pointer-events:none;white-space:nowrap;text-shadow:0 2px 8px #000}
     .p7ctl{position:absolute;right:10px;top:10px;display:flex;gap:5px;z-index:30}
     .p7legend{position:absolute;left:10px;bottom:10px;background:#090807dd;border:1px solid #40352d;border-radius:5px;padding:8px 10px;font-size:9px;color:#8e8378;pointer-events:none}
+    .p7presets{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:0 0 8px 0}
+    .p7preset{min-height:44px;padding:7px 10px;background:#0d0b09;border:1px solid #453a31;border-radius:5px;color:#8f8378;cursor:pointer;text-align:left}
+    .p7preset:hover{background:#17120f;border-color:#77604a}
+    .p7preset strong{display:block;font-size:11px;color:#d0c5b8}
+    .p7preset small{display:block;font-size:9px;color:#776f68;margin-top:3px}
+    .p7preset.active{background:linear-gradient(180deg,#203023,#111b13);border-color:#5d9668;box-shadow:inset 0 0 14px rgba(75,160,91,.12)}
+    .p7preset.active strong{color:#88e49a}.p7preset.active small{color:#74b980}
     .p7foot{display:flex;gap:7px;margin-top:8px}.p7foot button{flex:1}
 
     @media(max-width:1100px){.p7layout{grid-template-columns:170px minmax(0,1fr) 290px}}
@@ -3121,6 +3292,10 @@ function openTalentModal(){
             <div class="p7pill"><span>투자 TP</span><strong>${spent}</strong></div>
             <div class="p7pill"><span>레벨</span><strong>Lv.${player.level}</strong></div>
         </div>
+    </div>
+
+    <div class="p7presets">
+        ${presetButtons}
     </div>
 
     <div class="p7layout">
@@ -3155,7 +3330,7 @@ function openTalentModal(){
     </div>
 
     <div class="p7foot">
-        <button class="btn-choice" style="color:#ffcc66" onclick="window.game.resetSoulConstellation()">🕯️ 영혼 해방 (5,000 G)</button>
+        <button class="btn-choice" style="color:#ffcc66" onclick="window.game.resetSoulConstellation()">🕯️ 현재 프리셋 초기화 (5,000 G)</button>
         <button class="btn-choice" onclick="window.game.closeModal()">저장 및 닫기</button>
     </div>`;
 
@@ -3556,25 +3731,35 @@ function learnConstellationNode(nodeId) {
     player.tp -= node.cost;
     player.unlockedNodes.push(nodeId);
     player.talentHistory.push({nodeId, cost:node.cost, at:Date.now()});
+    syncActiveTalentPreset();
     player.hp=Math.min(player.hp,getMaxHp()); player.mp=Math.min(player.mp,getMaxMp());
     logNarrative(`🌟 [${node.name}] 영혼 각인 완료! <span style="color:var(--accent-gold);">TP -${node.cost}</span>`, 'reward','system');
     renderPoeTree(); updateModalStats(); updateUI(); autoSave();
 }
 
 function resetSoulConstellation() {
+    ensureTalentPresets();
     const spent = getSpentTalentPoints();
-    if (spent <= 0) { alert('환급할 특성이 없습니다.'); return; }
+    if (spent <= 0) { alert('현재 프리셋에 환급할 특성이 없습니다.'); return; }
     if ((player.gold || 0) < 5000) { alert('영혼 해방에는 5,000 G가 필요합니다.'); return; }
-    if (!confirm(`현재 투자한 TP ${spent}를 모두 환급하시겠습니까?\n비용: 5,000 G`)) return;
+    const presetNo = (player.activeTalentPreset || 0) + 1;
+    if (!confirm(`프리셋 ${presetNo}의 투자 TP ${spent}를 모두 환급하시겠습니까?\n비용: 5,000 G\n다른 프리셋은 유지됩니다.`)) return;
+
     player.gold -= 5000;
-    player.tp = Math.min(70, (player.tp || 0) + spent);
     player.unlockedNodes = ['center'];
     player.talentHistory = [];
+    player.tp = getTalentPointBudget();
     selectedTalentNodeId = 'center';
+    syncActiveTalentPreset();
+
     player.hp = Math.min(player.hp, getMaxHp());
-    player.mp = Math.min(player.mp, getMaxMp());
-    logNarrative(`🕯️ 영혼을 해방했습니다. 투자 TP ${spent}가 모두 환급되었습니다.`, 'reward', 'system');
-    renderPoeTree(); updateModalStats(); updateUI(); autoSave();
+    if (jobUsesMp()) player.mp = Math.min(player.mp, getMaxMp());
+    else player.mp = 0;
+
+    logNarrative(`🕯️ 프리셋 ${presetNo}의 영혼 각인을 초기화했습니다. TP ${spent}가 환급되었습니다.`, 'reward', 'system');
+    updateUI();
+    autoSave();
+    openTalentModal();
 }
 
 function openRiftMenu() {
@@ -4559,7 +4744,7 @@ const ACCESSORY_NAME_THEMES = {
     vampire:   { prefix:'흡혈의', score:112, label:'공격 시 흡혈' },
     goldBoost: { prefix:'황금의', score:94, label:'추가 골드' },
     dropBoost: { prefix:'행운의', score:94, label:'드랍률 증가' },
-    mpRegen:   { prefix:'마나 순환의', score:96, label:'MP 회복' }
+    mpRegen:   { prefix:'순환의', score:96, label:'전투 자원 회복' }
 };
 
 
@@ -5022,7 +5207,7 @@ function generateAccessoryEffect(gradeIdx) {
         { type: 'vampire', label: '공격 시 흡혈', baseVal: 3 },
         { type: 'goldBoost', label: '추가 골드 획득', baseVal: 15 },
         { type: 'dropBoost', label: '아이템 드랍률 증가', baseVal: 5 },
-        { type: 'mpRegen', label: '매 턴 마력 회복', baseVal: 3 }
+        { type: 'mpRegen', label: '매 턴 전투 자원 회복', baseVal: 3 }
     ];
     let eff = effects[Math.floor(Math.random() * effects.length)];
     return { type: eff.type, label: eff.label, val: Math.floor(eff.baseVal + (gradeIdx * (eff.baseVal * 0.6))) };
@@ -5548,7 +5733,10 @@ function renderInventoryModal() {
                     it.sockets.forEach(s => res += `<br>• ${s.name} (${s.label})`);
                     res += `</div>`;
                 }
-                if (it.effect) res += `<p style="font-size:11.5px; margin:6px 0 2px 0; color:var(--accent-green);">✨ ${it.effect.label} (${it.effect.val}%)</p>`;
+                if (it.effect) {
+                    const effectLabel = it.effect.type === 'mpRegen' ? '매 턴 전투 자원 회복' : it.effect.label;
+                    res += `<p style="font-size:11.5px; margin:6px 0 2px 0; color:var(--accent-green);">✨ ${effectLabel} (${it.effect.val}%)</p>`;
+                }
             } else if (it.type === 'rune') {
                 res += `<p style="font-size:12px; margin:4px 0; color:var(--accent-blue);">유형: 장비 룬 (${it.label})</p>`;
             } else { res += `<p style="font-size:12px; margin:4px 0; color:var(--text-muted);">유형: 소모품/재료/특수</p>`; }
@@ -5717,7 +5905,10 @@ function openStatModal() {
             eq.sockets.forEach(s => html += `<br>• ${s.name} (${s.label})`);
             html += `</div>`;
         }
-        if (eq.effect) html += `<p style="font-size:11.5px; margin:6px 0 2px 0; color:var(--accent-green);">✨ ${eq.effect.label} (${eq.effect.val}%)</p>`;
+        if (eq.effect) {
+            const effectLabel = eq.effect.type === 'mpRegen' ? '매 턴 전투 자원 회복' : eq.effect.label;
+            html += `<p style="font-size:11.5px; margin:6px 0 2px 0; color:var(--accent-green);">✨ ${effectLabel} (${eq.effect.val}%)</p>`;
+        }
 
         html += `</div>
             <div style="display:flex; flex-direction:column; gap:5px;">
@@ -6849,7 +7040,7 @@ window.game = {
     debugExistingGearSlotsV103,
     setLanguage, closeModal, loginOrRegister, manualServerSave, loadGame, startAdventure, debugCombatState,
     openChatModal, sendChatMessage,
-    openTalentModal, selectTalentNode, focusTalentSector, learnConstellationNode, resetSoulConstellation, zoomPoeTree, centerPoeTree,
+    openTalentModal, selectTalentNode, focusTalentSector, learnConstellationNode, resetSoulConstellation, switchTalentPreset, zoomPoeTree, centerPoeTree,
     openInventory, setInventoryTab, selectInventoryItem, equipItem, unequip, toggleLockItem, discardItem, useItem, useItemInventory, useItemInCombatModal,
     openStatModal, addStatModal, selectStatGear, unequipFromStat, openRuneSocketFromStat,
     enterHub, showChapterIntroModal, skipTypewriter, finishTypewriter, confirmStartDungeon, selectChapterModal,
