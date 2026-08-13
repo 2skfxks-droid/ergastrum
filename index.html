@@ -1784,16 +1784,16 @@ body.v2316-combat #battle-log-open-btn{
 
 <script type="module">
 const IMG_PLAYER = {
-    "방랑자": "images/wanderer.png",
-    "전사": "images/warrior.png",
-    "성기사": "images/paladin.png",
-    "광전사": "images/berserker.png",
-    "마법사": "images/mage.png",
-    "원소술사": "images/element.png",
-    "흑마법사": "images/warlock.png",
-    "도적": "images/rogue.png",
-    "암살자": "images/assassin.png",
-    "의적": "images/thief.png"
+    "방랑자": "assets/characters/wanderer.png",
+    "전사": "assets/characters/warrior.png",
+    "성기사": "assets/characters/paladin.png",
+    "광전사": "assets/characters/berserker.png",
+    "마법사": "assets/characters/mage.png",
+    "원소술사": "assets/characters/element.png",
+    "흑마법사": "assets/characters/warlock.png",
+    "도적": "assets/characters/rogue.png",
+    "암살자": "assets/characters/assassin.png",
+    "의적": "assets/characters/thief.png"
 };
 const IMG_PLAYER_FALLBACK = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><rect width='140' height='140' fill='%23110e0c'/><circle cx='70' cy='50' r='25' fill='%235c5046'/><path d='M25 128c5-35 24-52 45-52s40 17 45 52' fill='%23403731'/><circle cx='61' cy='47' r='3' fill='%23d4af37'/><circle cx='79' cy='47' r='3' fill='%23d4af37'/><path d='M58 62c8 5 16 5 24 0' stroke='%23d4af37' stroke-width='2' fill='none'/></svg>";
 
@@ -3862,7 +3862,7 @@ function getEnhanceBonus(eq, currentEnhance) {
 }
 
 const JOB_SKILLS = {
-    "방랑자": { name: "마력 강타", cost: 10, type: "hybrid", icon: "ra-burning-meteor", calcDamage: (p, enemy) => { let mw = p.equipment["주무기"]; let isM = mw && mw.weaponType === '마법'; return { base: isM ? (getPlayerMatk() * 1.6 + getFinalInt() * 2.2 + getFinalCon() * 0.5) : (getPlayerAtk() * 1.6 + getFinalStr() * 1.5 + getFinalDex() * 0.5), isMagic: isM }; } },
+    "방랑자": { name: "여행자의 일격", cost: 0, type: "physical", icon: "ra-sword", calcDamage: (p, enemy) => { return { base: getPlayerAtk() * 1.0 + getFinalDex() * 0.4, isMagic: false }; } },
     "전사": { name: "강격 (묵직한 강타)", cost: 15, type: "physical", icon: "ra-sword-smash", calcDamage: (p, enemy) => { return { base: getPlayerAtk() * 1.8 + getFinalStr() * 2.5, isMagic: false }; } },
     "성기사": { name: "신성한 심판", cost: 20, type: "holy", icon: "ra-sun-radiations", calcDamage: (p, enemy) => { return { base: getPlayerAtk() * 1.4 + (getFinalStr() * 1.5) + (getFinalCon() * 2.0), isMagic: false }; } },
     "광전사": { name: "혈풍참", cost: 15, type: "physical", icon: "ra-bleeding-eye", calcDamage: (p, enemy) => { let cost = Math.floor(getMaxHp() * 0.08); if (p.hp <= cost) { p._tempLog = `⚠️ 체력 부족!`; p.hp = 1; return { base: Math.max(1, getPlayerAtk() - (enemy.def * 0.2)), isMagic: false }; } p.hp -= cost; return { base: getPlayerAtk() * 2.2 + (getFinalStr() * 3.0) + (cost * 2), isMagic: false }; } },
@@ -5499,6 +5499,11 @@ function debugUltimateCooldown() {
 // 1차 직업: 3개 / 2차 직업: 6개 + 전용 궁극기
 // ============================================================
 const ACTUAL_JOB_SKILLS = {
+ '방랑자':[
+  {id:'v_basic',n:'여행자의 베기',k:'basic',coef:1.00,icon:'ra-sword',desc:'공격력 100% 물리 피해. 특별한 자원을 사용하지 않는 가장 기본적인 공격.'},
+  {id:'v_opening',n:'빈틈 노리기',k:'skill',coef:1.35,crit:10,cd:2,icon:'ra-targeting',desc:'공격력 135% 물리 피해. 추가 치명타 확률 +10%. 쿨타임 2행동.'},
+  {id:'v_firstaid',n:'응급처치',k:'utility',heal:.08,cd:4,icon:'ra-health',desc:'최대 HP의 8%를 회복. 쿨타임 4행동.'}
+ ],
  '전사':[
   {id:'w_basic',n:'강철 베기',k:'basic',coef:1.00,res:10,icon:'ra-sword',desc:'공격력 100% 물리 피해. 투지 10 획득.'},
   {id:'w_bash',n:'방패 강타',k:'skill',coef:1.40,cost:20,cd:2,armorBreak:2,icon:'ra-shield',desc:'공격력 140% 피해. 방어 파괴 2턴.'},
@@ -5570,11 +5575,11 @@ const ACTUAL_JOB_SKILLS = {
  ]
 };
 
-function getActualSkills(){ return ACTUAL_JOB_SKILLS[player.job] || ACTUAL_JOB_SKILLS['전사']; }
+function getActualSkills(){ return ACTUAL_JOB_SKILLS[player.job] || ACTUAL_JOB_SKILLS['방랑자']; }
 function getSkillUnlockLevel(s){ return Number(s.unlock||1); }
 function isSkillUnlocked(s){ if(s.k==='ultimate') return !!player.unlockedUltimate && player.level>=getSkillUnlockLevel(s); return player.level>=getSkillUnlockLevel(s); }
 function getJobResourceLabel(job=player.job){
- if(['전사'].includes(job))return '투지'; if(job==='성기사')return '신성력'; if(job==='광전사')return '분노';
+ if(job==='방랑자')return '없음'; if(['전사'].includes(job))return '투지'; if(job==='성기사')return '신성력'; if(job==='광전사')return '분노';
  if(['도적','암살자','의적'].includes(job))return '기력'; return '마력';
 }
 function getJobResourceValue(){ return Math.max(0,Math.min(100,Number(ensureCombatMechanicsState().jobResource)||0)); }
@@ -5610,13 +5615,13 @@ function renderJobResourceUI(){
  else if(job==='암살자') extra=`<div class="combat-resource-pips">${[1,2,3,4,5].map(i=>`<span class="resource-pip ${m.jobMarks>=i?'on':''}">🎯 ${i}</span>`).join('')}</div>`;
  else if(job==='의적') extra=`<div class="combat-resource-pips">${[1,2,3].map(i=>`<span class="resource-pip ${m.tricks>=i?'on':''}">🃏 ${i}</span>`).join('')}</div>`;
  const isMana=['마법사','원소술사','흑마법사'].includes(job); const val=isMana?(player.mp/getMaxMp()*100):getJobResourceValue(); const label=isMana?'마력':getJobResourceLabel();
- box.style.display=(gameState==='COMBAT')?'block':'none';
+ box.style.display=(gameState==='COMBAT'&&job!=='방랑자')?'block':'none';
  box.innerHTML=`<div class="combat-resource-head"><span class="combat-resource-name">${label}</span><span>${isMana?`${Math.floor(player.mp)}/${getMaxMp()}`:`${Math.floor(val)}/100`}</span></div><div class="combat-resource-track"><div class="combat-resource-fill" style="width:${Math.max(0,Math.min(100,val))}%"></div></div>${extra}`;
 }
 function getActualSkillIcon(s){ return s.icon||'ra-sword'; }
 function openCombatSkillGuide(){
  const skills=getActualSkills(); const m=ensureCombatMechanicsState();
- const html=`<h2>⚔ ${player.job} 스킬 / 자원</h2><div style="font-size:11px;color:#9f9078;line-height:1.65;margin-bottom:10px">현재 자원: <b style="color:var(--accent-gold)">${getJobResourceLabel()} ${Math.floor(getJobResourceValue())}</b>${player.job==='원소술사'?` · 구체 ${getOrbCount()}/6`:player.job==='흑마법사'?` · 영혼 ${m.souls}/5`:player.job==='암살자'?` · 표식 ${m.jobMarks}/5`:player.job==='의적'?` · 속임수 ${m.tricks}/3`:''}</div>${skills.map(s=>`<div style="padding:8px;margin:5px 0;border:1px solid #3a3026;background:#0d0b08;opacity:${isSkillUnlocked(s)?1:.45}"><b style="color:${s.k==='ultimate'?'#ff8f73':'#e7c66d'}">${s.n}</b> <span style="font-size:9px;color:#887a68">${s.k==='ultimate'?'궁극기':s.k==='utility'?'유틸리티':s.k==='basic'?'기본기':'전투기'} · ${actualSkillCostText(s)}${s.cd?` · 쿨 ${s.cd}행동`:''}${s.unlock?` · Lv${s.unlock}`:''}</span><br><span style="font-size:11px;color:#b9aa91">${s.desc}</span></div>`).join('')}<button class="btn-choice full-width" onclick="window.game.closeModal()">닫기</button>`; showModal(html);
+ const html=`<h2>⚔ ${player.job} 스킬 / 자원</h2><div style="font-size:11px;color:#9f9078;line-height:1.65;margin-bottom:10px">${player.job==='방랑자'?'전용 자원 없음':`현재 자원: <b style="color:var(--accent-gold)">${getJobResourceLabel()} ${Math.floor(getJobResourceValue())}</b>`}${player.job==='원소술사'?` · 구체 ${getOrbCount()}/6`:player.job==='흑마법사'?` · 영혼 ${m.souls}/5`:player.job==='암살자'?` · 표식 ${m.jobMarks}/5`:player.job==='의적'?` · 속임수 ${m.tricks}/3`:''}</div>${skills.map(s=>`<div style="padding:8px;margin:5px 0;border:1px solid #3a3026;background:#0d0b08;opacity:${isSkillUnlocked(s)?1:.45}"><b style="color:${s.k==='ultimate'?'#ff8f73':'#e7c66d'}">${s.n}</b> <span style="font-size:9px;color:#887a68">${s.k==='ultimate'?'궁극기':s.k==='utility'?'유틸리티':s.k==='basic'?'기본기':'전투기'} · ${actualSkillCostText(s)}${s.cd?` · 쿨 ${s.cd}행동`:''}${s.unlock?` · Lv${s.unlock}`:''}</span><br><span style="font-size:11px;color:#b9aa91">${s.desc}</span></div>`).join('')}<button class="btn-choice full-width" onclick="window.game.closeModal()">닫기</button>`; showModal(html);
 }
 function renderActualCombatActions(){
  const container=document.getElementById('action-container'); if(!container)return; const skills=getActualSkills();
