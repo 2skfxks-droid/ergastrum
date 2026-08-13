@@ -474,7 +474,7 @@
 #center-display{position:relative;min-width:0}.battle-visual-stage{display:none;position:relative;min-height:390px;margin-bottom:8px;overflow:hidden;border:1px solid #5a4327;background:#0a0807;box-shadow:inset 0 0 55px #000,0 6px 18px rgba(0,0,0,.35)}body.v2316-combat #battle-visual-stage{display:block}
 .battle-bg-layer{position:absolute;inset:0;background:radial-gradient(circle at 67% 37%,rgba(126,35,25,.18),transparent 30%),linear-gradient(180deg,rgba(18,20,23,.38),rgba(5,4,4,.9)),linear-gradient(120deg,#20201e,#0e0c0b 48%,#1a1110);background-size:cover;background-position:center;filter:saturate(.85)}.battle-bg-layer:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.38),transparent 35%,transparent 68%,rgba(0,0,0,.3)),linear-gradient(0deg,rgba(0,0,0,.72),transparent 42%)}
 .battle-stage-head{position:absolute;z-index:8;top:8px;left:50%;transform:translateX(-50%);min-width:230px;text-align:center;padding:5px 18px;background:linear-gradient(90deg,transparent,rgba(7,6,5,.9) 20%,rgba(7,6,5,.9) 80%,transparent);color:#d9b15c;font-size:12px;letter-spacing:1px}.battle-stage-round{display:block;color:#f0d08a;font-size:17px;margin-top:2px}
-.battle-actor{position:absolute;z-index:3;bottom:35px;width:43%;height:78%;pointer-events:none}.battle-actor.player{left:1%}.battle-actor.enemy{right:1%}.battle-actor-img{position:absolute;bottom:0;width:100%;height:100%;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 12px 15px rgba(0,0,0,.8));transition:transform .18s,filter .18s,opacity .35s}.battle-actor.player .battle-actor-img{transform:scaleX(-1)}.battle-actor.enemy.boss .battle-actor-img{transform:scale(1.10)}.battle-actor-name{position:absolute;z-index:5;bottom:4px;left:8%;right:8%;text-align:center;font-size:11px;font-weight:800;color:#d9c7aa;text-shadow:0 2px 3px #000}.battle-actor.enemy .battle-actor-name{color:#e07469}.battle-actor-shadow{position:absolute;left:14%;right:14%;bottom:2%;height:8%;border-radius:50%;background:radial-gradient(ellipse,rgba(0,0,0,.8),transparent 68%)}
+.battle-actor{position:absolute;z-index:3;bottom:35px;width:43%;height:78%;pointer-events:none}.battle-actor.player{left:1%}.battle-actor.enemy{right:1%}.battle-actor-img{position:absolute;bottom:0;width:100%;height:100%;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 12px 15px rgba(0,0,0,.8));transition:transform .18s,filter .18s,opacity .35s}.battle-actor.player .battle-actor-img{transform:scaleX(-1)}.battle-actor.enemy.boss .battle-actor-img{transform:scale(1.00)}.battle-actor-name{position:absolute;z-index:5;bottom:4px;left:8%;right:8%;text-align:center;font-size:11px;font-weight:800;color:#d9c7aa;text-shadow:0 2px 3px #000}.battle-actor.enemy .battle-actor-name{color:#e07469}.battle-actor-shadow{position:absolute;left:14%;right:14%;bottom:2%;height:8%;border-radius:50%;background:radial-gradient(ellipse,rgba(0,0,0,.8),transparent 68%)}
 .battle-stage-effects{position:absolute;z-index:6;top:48px;left:15%;right:15%;display:flex;justify-content:center;gap:5px;flex-wrap:wrap}.battle-stage-chip{min-width:28px;padding:4px 6px;text-align:center;border:1px solid #63402f;background:rgba(18,9,8,.86);font-size:10px;color:#e3b1a8;box-shadow:0 2px 6px #000}.battle-stage-empty{color:#74695d;border-color:#39312a;background:rgba(8,7,6,.72)}
 .battle-floating-layer{position:absolute;z-index:9;inset:0;pointer-events:none;overflow:hidden}.battle-float{position:absolute;left:62%;top:43%;transform:translate(-50%,-50%);font-weight:900;text-shadow:0 3px 5px #000;animation:v2316Float 1.05s ease-out forwards;color:#efc457;font-size:28px}.battle-float.heal{color:#6ddd78;font-size:20px}.battle-float.effect{color:#c47bea;font-size:18px}@keyframes v2316Float{0%{opacity:0;transform:translate(-50%,-20%) scale(.8)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}100%{opacity:0;transform:translate(-50%,-125%) scale(.95)}}
 .battle-actor.hit .battle-actor-img{animation:v2316Hit .28s ease}@keyframes v2316Hit{0%,100%{transform:translateX(0)}25%{transform:translateX(-10px);filter:brightness(1.8) drop-shadow(0 0 14px #b22)}60%{transform:translateX(7px)}}.battle-actor.player.hit .battle-actor-img{animation:v2316PlayerHit .28s ease}@keyframes v2316PlayerHit{0%,100%{transform:scaleX(-1) translateX(0)}25%{transform:scaleX(-1) translateX(-10px);filter:brightness(1.8) drop-shadow(0 0 14px #b22)}60%{transform:scaleX(-1) translateX(7px)}}.battle-actor.dead .battle-actor-img{opacity:0;filter:grayscale(1) brightness(.35);transform:translateY(18px)}
@@ -1653,13 +1653,23 @@ for(const m of MONSTER_ROSTER){
     MONSTER_POOLS[m.chapter] ||= {normal:[],elite:[],boss:[]};
     MONSTER_POOLS[m.chapter][m.tier].push(m);
 }
+// ============================================================
+// V23.33 — 몬스터 체급별 전투 표시 크기 재조정
+// small / normal / large / giant / colossal 간 체감 차이를 확대.
+// 보스 여부가 아니라 몬스터의 size 값을 기준으로 크기를 결정.
+// ============================================================
+// ============================================================
+// V23.34 — 플레이어 표시 크기 추가 조정
+// V23.33 대비 플레이어를 약 10% 축소.
+// 몬스터 체급별 상대 크기 차이는 그대로 유지.
+// ============================================================
 const MONSTER_VISUAL_SCALE = {
-    small:    {enemy:.82, player:1.00},
-    normal:   {enemy:1.00, player:1.00},
-    large:    {enemy:1.10, player:.92},
-    giant:    {enemy:1.22, player:.82},
-    colossal: {enemy:1.34, player:.72},
-    player:   {enemy:1.00, player:1.00}
+    small:    {enemy:.60, player:.90},
+    normal:   {enemy:.78, player:.90},
+    large:    {enemy:.92, player:.864},
+    giant:    {enemy:1.03, player:.81},
+    colossal: {enemy:1.14, player:.756},
+    player:   {enemy:.78, player:.90}
 };
 function getMonsterDefById(id){ return MONSTER_BY_ID[id] || null; }
 function getMonsterPool(chapter,tier='normal'){ return MONSTER_POOLS[Number(chapter)]?.[tier] || []; }
